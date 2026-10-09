@@ -118,8 +118,8 @@ require __DIR__ . '/includes/head.php';
 </div>
 
 <p class="muted">
-  <a class="btn" href="index.php">Upload another batch</a>
-  <a class="btn" href="review.php">View history</a>
+  <a class="btn" href="upload_essays.php">Upload another batch</a>
+  <a class="btn" href="index.php">View history</a>
 </p>
 
 <?php require __DIR__ . '/includes/foot.php'; ?>

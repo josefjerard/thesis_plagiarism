@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         refresh_submission_status((int)$c['submission_a']);
         refresh_submission_status((int)$c['submission_b']);
         flash_set('Decision recorded: ' . str_replace('_', ' ', $verdict) . '.');
-        redirect('review.php');
+        redirect('index.php');
     }
     flash_set('Invalid decision.');
     redirect(comparison_url($id));
@@ -106,7 +106,7 @@ require __DIR__ . '/includes/head.php';
   <button type="submit" name="verdict" value="not_plagiarism" class="btn primary">Not plagiarism</button>
   <a class="btn" href="report.php?id=<?= (int)$id ?>">View similarity report</a>
   <a class="btn" href="result.php?id=<?= (int)$c['activity_id'] ?>">Batch results</a>
-  <a class="btn" href="review.php">Back to history</a>
+  <a class="btn" href="index.php">Back to history</a>
 </form>
 
 <?php require __DIR__ . '/includes/foot.php'; ?>

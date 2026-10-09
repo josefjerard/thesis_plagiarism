@@ -89,9 +89,9 @@ if (!is_writable(UPLOAD_DIR)) {
     <div class="box ok"><?= htmlspecialchars($msg) ?></div>
   <?php endforeach; ?>
   <p>
-    <a href="index.php">Go to the upload page</a>
+    <a href="upload_essays.php">Go to the upload page</a>
     &middot;
-    <a href="review.php">Go to the review history</a>
+    <a href="index.php">Go to the review history</a>
   </p>
   <p class="muted">Security: delete <code>install.php</code> now.</p>
 </div>

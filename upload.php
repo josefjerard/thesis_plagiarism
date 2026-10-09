@@ -14,7 +14,7 @@ $names = $_POST['student_names'] ?? [];
 
 if ($files === null || !is_array($files['name'] ?? null)) {
     flash_set('Please choose at least two essay images.');
-    redirect('index.php');
+    redirect('upload_essays.php');
 }
 
 $allowed = [
@@ -25,7 +25,7 @@ $allowed = [
 
 if (!is_dir(UPLOAD_DIR) || !is_writable(UPLOAD_DIR)) {
     flash_set('Server storage directory is not writable. Run install.php once.');
-    redirect('index.php');
+    redirect('upload_essays.php');
 }
 
 // ---- Phase 1: validate and OCR every selected file, keep only readable ones ----
@@ -94,7 +94,7 @@ if (count($good) < 2) {
         $message .= 'Rejected: ' . implode(' | ', $rejected);
     }
     flash_set($message);
-    redirect('index.php');
+    redirect('upload_essays.php');
 }
 
 // ---- Phase 3: create the batch, store the essays, then compare within the batch ----
@@ -113,7 +113,7 @@ foreach ($good as $item) {
     $dest = UPLOAD_DIR . DIRECTORY_SEPARATOR . $fileName;
     if (!move_uploaded_file($item['tmp'], $dest)) {
         flash_set('Could not store one of the uploaded files. Check uploads/ permissions.');
-        redirect('index.php');
+        redirect('upload_essays.php');
     }
 
     $insert->execute([

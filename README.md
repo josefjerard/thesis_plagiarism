@@ -69,10 +69,10 @@ OCR: Google Cloud Vision API (Document Text Detection)
 Semantic similarity: Python service with sentence-transformers
 Project structure
 thesis_plagiarism/
-├── index.php            upload page (select a batch of images)
+├── index.php            review history (default page, sessions + filters)
+├── upload_essays.php    upload page (select a batch of images)
 ├── upload.php           handles the batch, runs OCR and comparison
 ├── result.php           batch results (all pairs)
-├── review.php           review history (sessions + filters)
 ├── about.php            how the scanner scores
 ├── compare.php          side-by-side comparison
 ├── report.php           generated similarity report

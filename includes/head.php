@@ -1,8 +1,5 @@
 <?php
-$nav = [
-    'index.php'  => 'Upload Essays',
-    'review.php' => 'History',
-];
+$current = basename($_SERVER['SCRIPT_NAME']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -15,12 +12,9 @@ $nav = [
 <body>
 <nav class="topnav">
   <div class="container nav-inner">
-    <span class="brand">Plagiarism Scanner</span>
-    <?php $current = basename($_SERVER['SCRIPT_NAME']); ?>
-    <?php foreach ($nav as $href => $label) : ?>
-      <a href="<?= e($href) ?>" class="<?= ($current === $href) ? 'active' : '' ?>"><?= e($label) ?></a>
-    <?php endforeach; ?>
-    <a href="about.php" class="nav-right <?= ($current === 'about.php') ? 'active' : '' ?>">About</a>
+    <a class="brand" href="index.php">Plagiarism Scanner</a>
+    <a href="upload_essays.php" class="nav-right <?= ($current === 'upload_essays.php') ? 'active' : '' ?>">Upload Essays</a>
+    <a href="about.php" class="<?= ($current === 'about.php') ? 'active' : '' ?>">About</a>
   </div>
 </nav>
 <div class="container main">
