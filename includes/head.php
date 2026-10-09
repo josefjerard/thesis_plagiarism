@@ -1,8 +1,7 @@
 <?php
 $nav = [
-    'index.php'      => 'Upload essay',
-    'activities.php' => 'Activities',
-    'review.php'     => 'Admin review',
+    'index.php'  => 'Upload Essays',
+    'review.php' => 'History',
 ];
 ?>
 <!DOCTYPE html>
@@ -16,10 +15,12 @@ $nav = [
 <body>
 <nav class="topnav">
   <div class="container nav-inner">
-    <span class="brand">Essay Similarity</span>
+    <span class="brand">Plagiarism Scanner</span>
+    <?php $current = basename($_SERVER['SCRIPT_NAME']); ?>
     <?php foreach ($nav as $href => $label) : ?>
-      <a href="<?= e($href) ?>" class="<?= (basename($_SERVER['SCRIPT_NAME']) === $href) ? 'active' : '' ?>"><?= e($label) ?></a>
+      <a href="<?= e($href) ?>" class="<?= ($current === $href) ? 'active' : '' ?>"><?= e($label) ?></a>
     <?php endforeach; ?>
+    <a href="about.php" class="nav-right <?= ($current === 'about.php') ? 'active' : '' ?>">About</a>
   </div>
 </nav>
 <div class="container main">

@@ -4,99 +4,108 @@ require __DIR__ . '/includes/db.php';
 require __DIR__ . '/includes/helpers.php';
 require __DIR__ . '/includes/similarity.php';
 
-$id = (int)($_GET['id'] ?? 0);
-$stmt = db()->prepare(
-    'SELECT s.*, a.title AS activity_title
-     FROM submissions s JOIN activities a ON a.id = s.activity_id
-     WHERE s.id = ?'
-);
-$stmt->execute([$id]);
-$sub = $stmt->fetch();
-if ($sub === false) {
-    exit('Submission not found.');
+$batchId = (int)($_GET['id'] ?? 0);
+
+$stmt = db()->prepare('SELECT id, title, created_at FROM activities WHERE id = ?');
+$stmt->execute([$batchId]);
+$batch = $stmt->fetch();
+if ($batch === false) {
+    exit('Batch not found.');
 }
+
+$subStmt = db()->prepare('SELECT * FROM submissions WHERE activity_id = ? ORDER BY id');
+$subStmt->execute([$batchId]);
+$submissions = $subStmt->fetchAll();
 
 $compStmt = db()->prepare(
     'SELECT c.*,
-            s1.student_name AS name_a, s1.image_path AS image_a,
-            s2.student_name AS name_b, s2.image_path AS image_b
+            s1.student_name AS name_a, s1.image_path AS image_a, s1.language AS lang_a,
+            s2.student_name AS name_b, s2.image_path AS image_b, s2.language AS lang_b
      FROM comparisons c
      JOIN submissions s1 ON s1.id = c.submission_a
      JOIN submissions s2 ON s2.id = c.submission_b
-     WHERE c.submission_a = ? OR c.submission_b = ?
+     WHERE c.activity_id = ?
      ORDER BY c.similarity DESC'
 );
-$compStmt->execute([$id, $id]);
+$compStmt->execute([$batchId]);
 $comparisons = $compStmt->fetchAll();
 
 $flaggedCount = 0;
 foreach ($comparisons as $c) {
-    if ($c['similarity'] >= FLAG_THRESHOLD) {
+    if ((float)$c['similarity'] >= FLAG_THRESHOLD) {
         $flaggedCount++;
     }
 }
 
-$imageUrl = 'uploads/' . rawurlencode($sub['image_path']);
-$pageTitle = 'Result';
+$pageTitle = 'Batch results';
 require __DIR__ . '/includes/head.php';
 ?>
 
 <?php if ($flaggedCount > 0) : ?>
   <div class="box warn">
-    <b>Flagged.</b> This submission matches another essay at or above the
-    <?= e(sprintf('%.0f%%', FLAG_THRESHOLD * 100)) ?> threshold
-    (<?= $flaggedCount ?> pair<?= $flaggedCount === 1 ? '' : 's' ?>). Sent to the admin review queue.
+    <b>Flagged.</b> <?= $flaggedCount ?> pair<?= $flaggedCount === 1 ? '' : 's' ?> in this batch match at or
+    above the <?= e(sprintf('%.0f%%', FLAG_THRESHOLD * 100)) ?> threshold and were sent to the review history.
   </div>
 <?php else : ?>
-  <div class="box ok">No flagged matches at the current threshold.</div>
+  <div class="box ok">No flagged matches at the current threshold in this batch.</div>
 <?php endif; ?>
 
-<h1>Submission #<?= (int)$sub['id'] ?> — <?= e($sub['student_name']) ?></h1>
-<p class="muted">Activity: <?= e($sub['activity_title']) ?> &middot; submitted <?= e($sub['created_at']) ?></p>
+<h1>Batch results</h1>
+<p class="muted">
+  <?= e($batch['title']) ?> &middot;
+  <?= count($submissions) ?> essay<?= count($submissions) === 1 ? '' : 's' ?> &middot;
+  uploaded <?= e($batch['created_at']) ?>
+</p>
 
-<div class="grid two">
-  <div class="card">
-    <h2>Uploaded image</h2>
-    <a href="<?= e($imageUrl) ?>" target="_blank">
-      <img src="<?= e($imageUrl) ?>" alt="Submitted essay" class="paper">
-    </a>
-  </div>
-  <div class="card">
-    <h2>OCR quality</h2>
-    <table class="meta">
-      <tr><th>Words detected</th><td><?= (int)$sub['word_count'] ?></td></tr>
-      <tr><th>Low-confidence words (dropped)</th><td><?= (int)$sub['low_conf_words'] ?></td></tr>
-      <tr><th>Average confidence</th><td><?= e(sprintf('%.0f%%', $sub['avg_confidence'] * 100)) ?></td></tr>
-      <tr><th>Words kept for comparison</th><td><?= e((string)(preg_match_all('/\S+/u', (string)$sub['confident_text']) ?: 0)) ?></td></tr>
-    </table>
-    <a href="<?= e(submission_url($id)) ?>" class="btn">View full transcription</a>
+<div class="card">
+  <h2>Essays in this batch</h2>
+  <div class="essay-grid">
+    <?php foreach ($submissions as $s) : ?>
+      <div class="essay-tile">
+        <a href="uploads/<?= e(rawurlencode($s['image_path'])) ?>" target="_blank">
+          <img src="uploads/<?= e(rawurlencode($s['image_path'])) ?>" alt="<?= e($s['student_name']) ?>">
+        </a>
+        <div class="essay-tile-body">
+          <b><?= e($s['student_name']) ?></b>
+          <div class="muted">
+            <?= e(language_label((string)$s['language'])) ?> &middot;
+            avg conf <?= e(sprintf('%.0f%%', $s['avg_confidence'] * 100)) ?>
+          </div>
+          <a class="btn small" href="<?= e(submission_url((int)$s['id'])) ?>">Details</a>
+        </div>
+      </div>
+    <?php endforeach; ?>
   </div>
 </div>
 
 <div class="card">
-  <h2>Comparison results</h2>
+  <h2>Pairwise comparisons</h2>
   <?php if ($comparisons === []) : ?>
-    <p class="muted">No other submissions in this activity to compare against yet.</p>
+    <p class="muted">No same-language pairs to compare in this batch.</p>
   <?php else : ?>
     <table class="list">
       <thead>
-        <tr><th>Score</th><th>Paired with</th><th>Label</th><th>Review status</th><th></th></tr>
+        <tr><th>Hybrid score</th><th>Essay A</th><th>Essay B</th><th>Label</th><th>Review status</th><th></th></tr>
       </thead>
       <tbody>
-      <?php foreach ($comparisons as $c) :
-          if ((int)$c['submission_a'] === $id) {
-              $otherName  = $c['name_b'];
-              $otherImage = $c['image_b'];
-          } else {
-              $otherName  = $c['name_a'];
-              $otherImage = $c['image_a'];
-          }
-      ?>
-        <tr class="<?= $c['similarity'] >= FLAG_THRESHOLD ? 'flagged-row' : '' ?>">
-          <td><b><?= e(sprintf('%.0f%%', $c['similarity'] * 100)) ?></b></td>
+      <?php foreach ($comparisons as $c) : ?>
+        <tr class="<?= (float)$c['similarity'] >= FLAG_THRESHOLD ? 'flagged-row' : '' ?>">
           <td>
-            <img src="uploads/<?= e(rawurlencode($otherImage)) ?>" alt="other" class="thumb">
-            <?= e($otherName) ?>
+            <b><?= e(pct((float)$c['similarity'])) ?></b>
+            <div class="breakdown">
+              N <?= e(pct($c['ngram_score'] !== null ? (float)$c['ngram_score'] : null)) ?>
+              &middot; T <?= e(pct($c['tfidf_score'] !== null ? (float)$c['tfidf_score'] : null)) ?>
+              &middot; L <?= e(pct($c['lev_score'] !== null ? (float)$c['lev_score'] : null)) ?>
+              &middot; S <?= e(pct($c['semantic_score'] !== null ? (float)$c['semantic_score'] : null)) ?>
+            </div>
+          </td>
+          <td>
+            <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay" class="thumb">
+            <?= e($c['name_a']) ?>
+          </td>
+          <td>
+            <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay" class="thumb">
+            <?= e($c['name_b']) ?>
           </td>
           <td><?= e(similarity_label((float)$c['similarity'])) ?></td>
           <td><?= e(ucwords(str_replace('_', ' ', $c['review_status']))) ?></td>
@@ -107,5 +116,10 @@ require __DIR__ . '/includes/head.php';
     </table>
   <?php endif; ?>
 </div>
+
+<p class="muted">
+  <a class="btn" href="index.php">Upload another batch</a>
+  <a class="btn" href="review.php">View history</a>
+</p>
 
 <?php require __DIR__ . '/includes/foot.php'; ?>

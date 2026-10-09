@@ -43,6 +43,26 @@ function human_bytes(int $bytes): string
     return round($bytes / 1024, 0) . ' KB';
 }
 
+/** Formats a 0..1 similarity score as a whole percentage, or an em dash if null. */
+function pct(?float $value): string
+{
+    if ($value === null) {
+        return '—';
+    }
+    return sprintf('%.0f%%', $value * 100);
+}
+
+/** Renders a sentence list as spans, marking highlighted indices. */
+function highlighted_sentences(array $sentences, array $highlighted): string
+{
+    $html = '';
+    foreach ($sentences as $index => $sentence) {
+        $class = isset($highlighted[$index]) ? ' class="hl"' : '';
+        $html .= '<span' . $class . '>' . e($sentence) . '</span> ';
+    }
+    return $html;
+}
+
 /** Marks a submission reviewed when none of its comparisons are left pending. */
 function refresh_submission_status(int $submissionId): void
 {

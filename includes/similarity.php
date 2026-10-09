@@ -2,111 +2,211 @@
 declare(strict_types=1);
 
 /**
- * OCR-error-robust similarity.
+ * Similarity engine orchestrator.
  *
- * Instead of comparing word-level TF-IDF (which breaks when OCR makes a
- * character error), both essays are reduced to a SET of character shingles
- * (e.g. 5-charograms). A single OCR typo only destroys 1-2 shingles, so the
- * score degrades gracefully instead of collapsing to zero.
+ * Each algorithm lives in its own file under includes/similarity/. This file
+ * wires them together: it scores a single pair with all four methods, combines
+ * them into the hybrid score, records the sentence matches, and stores every
+ * same-language pair in an activity.
  */
 
-/** Lowercase, strip non-alphanumerics, collapse whitespace. ASCII-safe after this step. */
-function normalize_text(string $text): string
-{
-    $text = strtolower($text);
-    $text = preg_replace('/[^a-z0-9\s]+/', ' ', $text);
-    $text = preg_replace('/\s+/', ' ', $text);
-    return trim($text) ?? '';
-}
+// Sensible fallbacks so the engine still runs if config.php predates a setting.
+if (!defined('HIGHLIGHT_THRESHOLD')) define('HIGHLIGHT_THRESHOLD', 0.60);
+if (!defined('LEVEL_HIGH'))        define('LEVEL_HIGH', 0.70);
+if (!defined('LEVEL_MODERATE'))    define('LEVEL_MODERATE', 0.30);
+if (!defined('W_NGRAM'))           define('W_NGRAM', 0.35);
+if (!defined('W_TFIDF'))           define('W_TFIDF', 0.25);
+if (!defined('W_LEV'))             define('W_LEV', 0.20);
+if (!defined('W_SEMANTIC'))        define('W_SEMANTIC', 0.20);
 
-/** Builds the set of sliding-window character shingles of size $n. */
-function char_shingles(string $text, ?int $n = null): array
+require_once __DIR__ . '/similarity/preprocess.php';
+require_once __DIR__ . '/similarity/language.php';
+require_once __DIR__ . '/similarity/ngram.php';
+require_once __DIR__ . '/similarity/tfidf.php';
+require_once __DIR__ . '/similarity/levenshtein.php';
+require_once __DIR__ . '/similarity/semantic.php';
+require_once __DIR__ . '/similarity/hybrid.php';
+
+/**
+ * Scores one pair of essays with every method and returns the full breakdown.
+ *
+ * @param array $tokensA stopword-removed tokens for essay A (for TF-IDF)
+ * @param array $tokensB stopword-removed tokens for essay B (for TF-IDF)
+ * @param array $idf     smoothed IDF map built from the activity corpus
+ * @return array{
+ *   ngram: float, tfidf: float, lev: float,
+ *   semantic: ?float, hybrid: float, matched: array
+ * }
+ */
+function score_pair(string $textA, string $textB, array $tokensA, array $tokensB, array $idf): array
 {
-    $n = $n ?? SHINGLE_SIZE;
-    $text = normalize_text($text);
-    if ($text === '') {
-        return [];
-    }
-    $len = strlen($text);
-    if ($len < $n) {
-        return [$text => true];
-    }
-    $set = [];
-    for ($i = 0; $i <= $len - $n; $i++) {
-        $set[substr($text, $i, $n)] = true;
-    }
-    return $set;
+    $ngram = text_similarity($textA, $textB) ?? 0.0;
+    $tfidf = cosine_similarity(tfidf_vector($tokensA, $idf), tfidf_vector($tokensB, $idf));
+
+    $sentA = split_sentences($textA);
+    $sentB = split_sentences($textB);
+
+    $levResult = levenshtein_similarity($sentA, $sentB);
+    $semResult = semantic_similarity($sentA, $sentB);
+    $semantic  = $semResult !== null ? $semResult['score'] : null;
+
+    return [
+        'ngram'    => round($ngram, 4),
+        'tfidf'    => round($tfidf, 4),
+        'lev'      => $levResult['score'],
+        'semantic' => $semantic !== null ? round($semantic, 4) : null,
+        'hybrid'   => hybrid_score($ngram, $tfidf, $levResult['score'], $semantic),
+        'matched'  => build_matched_sentences($levResult['pairs'], $semResult['pairs'] ?? []),
+    ];
 }
 
 /**
- * Returns similarity in [0,1] using 'dice' or 'jaccard'.
- * Returns null when either text is empty (can't compare).
+ * Merges Levenshtein and semantic sentence matches into one list keyed by the
+ * (a,b) sentence index pair, so the review view can highlight either kind.
  */
-function text_similarity(string $a, string $b): ?float
+function build_matched_sentences(array $levPairs, array $semPairs): array
 {
-    $setA = char_shingles($a);
-    $setB = char_shingles($b);
-    if ($setA === [] || $setB === []) {
-        return null;
+    $byKey = [];
+    foreach ($levPairs as $pair) {
+        $key = $pair['a'] . '-' . $pair['b'];
+        $byKey[$key] = ['a' => $pair['a'], 'b' => $pair['b'], 'lev' => $pair['score'], 'sem' => null];
+    }
+    foreach ($semPairs as $pair) {
+        if (!isset($pair['a'], $pair['b'], $pair['score'])) {
+            continue;
+        }
+        $key = $pair['a'] . '-' . $pair['b'];
+        if (isset($byKey[$key])) {
+            $byKey[$key]['sem'] = $pair['score'];
+        } else {
+            $byKey[$key] = ['a' => $pair['a'], 'b' => $pair['b'], 'lev' => null, 'sem' => $pair['score']];
+        }
     }
 
-    $intersection = array_intersect_key($setA, $setB);
-    $shared = count($intersection);
-    $total = count($setA) + count($setB);
+    $pairs = array_values($byKey);
+    usort($pairs, static function (array $x, array $y): int {
+        return max($y['lev'] ?? 0.0, $y['sem'] ?? 0.0)
+            <=> max($x['lev'] ?? 0.0, $x['sem'] ?? 0.0);
+    });
 
-    if ($total === 0) {
-        return null;
-    }
-
-    if (SIM_METHOD === 'jaccard') {
-        $union = $total - $shared;
-        return $union > 0 ? round($shared / $union, 4) : 1.0;
-    }
-
-    return round((2 * $shared) / $total, 4);
+    return ['pairs' => $pairs];
 }
 
 /**
- * Compares a new submission's confident text against every other submission
- * in the same activity and stores the pairwise scores.
- * Returns the highest similarity found (or null).
+ * Scores EVERY same-language pair in a batch (activity) and stores the results.
+ *
+ * A batch is the set of essays uploaded together, so comparisons never cross
+ * batches. The TF-IDF corpus is built from all same-language essays in the
+ * batch at once, which keeps the scores consistent across pairs.
+ *
+ * @return array<int,float> highest hybrid score per submission id
  */
-function store_comparisons(int $newSubmissionId, int $activityId, string $newText): ?float
+function store_batch_comparisons(int $activityId): array
 {
     $pdo = db();
     $stmt = $pdo->prepare(
-        'SELECT id, confident_text FROM submissions WHERE activity_id = ? AND id <> ?'
+        'SELECT id, confident_text, language FROM submissions WHERE activity_id = ? ORDER BY id'
     );
-    $stmt->execute([$activityId, $newSubmissionId]);
-    $others = $stmt->fetchAll();
+    $stmt->execute([$activityId]);
+    $rows = $stmt->fetchAll();
+
+    // Tokenize each essay once, and build one IDF map per language in the batch.
+    $tokensById  = [];
+    $corpusByLang = [];
+    foreach ($rows as $row) {
+        $id     = (int)$row['id'];
+        $lang   = (string)$row['language'];
+        $tokens = tokenize((string)$row['confident_text'], true);
+        $tokensById[$id] = $tokens;
+        $corpusByLang[$lang][] = $tokens;
+    }
+
+    $idfByLang = [];
+    foreach ($corpusByLang as $lang => $documents) {
+        $idfByLang[$lang] = build_idf($documents);
+    }
 
     $insert = $pdo->prepare(
-        'INSERT INTO comparisons (activity_id, submission_a, submission_b, similarity)
-         VALUES (?, ?, ?, ?)'
+        'INSERT INTO comparisons
+            (activity_id, submission_a, submission_b, similarity,
+             ngram_score, tfidf_score, lev_score, semantic_score, hybrid_score, matched_sentences)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+            similarity = VALUES(similarity),
+            ngram_score = VALUES(ngram_score),
+            tfidf_score = VALUES(tfidf_score),
+            lev_score = VALUES(lev_score),
+            semantic_score = VALUES(semantic_score),
+            hybrid_score = VALUES(hybrid_score),
+            matched_sentences = VALUES(matched_sentences)'
     );
 
-    $highest = null;
-    foreach ($others as $other) {
-        $score = text_similarity($newText, (string)$other['confident_text']);
-        if ($score === null) {
-            continue;
-        }
-        $a = min((int)$newSubmissionId, (int)$other['id']);
-        $b = max((int)$newSubmissionId, (int)$other['id']);
-        $insert->execute([$activityId, $a, $b, $score]);
+    $highestBySubmission = [];
+    $count = count($rows);
+    for ($i = 0; $i < $count; $i++) {
+        for ($j = $i + 1; $j < $count; $j++) {
+            $rowA = $rows[$i];
+            $rowB = $rows[$j];
+            if ($rowA['language'] !== $rowB['language']) {
+                continue;
+            }
 
-        if ($highest === null || $score > $highest) {
-            $highest = $score;
+            $idA = (int)$rowA['id'];
+            $idB = (int)$rowB['id'];
+            $lang = (string)$rowA['language'];
+
+            $result = score_pair(
+                (string)$rowA['confident_text'],
+                (string)$rowB['confident_text'],
+                $tokensById[$idA],
+                $tokensById[$idB],
+                $idfByLang[$lang]
+            );
+
+            $insert->execute([
+                $activityId,
+                min($idA, $idB),
+                max($idA, $idB),
+                $result['hybrid'],
+                $result['ngram'],
+                $result['tfidf'],
+                $result['lev'],
+                $result['semantic'],
+                $result['hybrid'],
+                json_encode($result['matched']),
+            ]);
+
+            foreach ([$idA, $idB] as $id) {
+                if (!isset($highestBySubmission[$id]) || $result['hybrid'] > $highestBySubmission[$id]) {
+                    $highestBySubmission[$id] = $result['hybrid'];
+                }
+            }
         }
     }
 
-    return $highest;
+    return $highestBySubmission;
 }
 
-/** Human labels for a similarity score. */
-function similarity_label(float $score): string
+/**
+ * Decodes a stored matched_sentences JSON blob and returns, per side, the set
+ * of sentence indices whose best match is at or above $threshold.
+ *
+ * @return array{0: array<int,bool>, 1: array<int,bool>}
+ */
+function highlighted_sentence_map(?string $matchedJson, ?float $threshold = null): array
 {
-    if ($score >= 0.70) return 'High similarity';
-    if ($score >= 0.30) return 'Moderate similarity';
-    return 'Low similarity';
+    $threshold = $threshold ?? HIGHLIGHT_THRESHOLD;
+    $data = json_decode((string)$matchedJson, true);
+    $pairs = is_array($data['pairs'] ?? null) ? $data['pairs'] : [];
+
+    $sideA = [];
+    $sideB = [];
+    foreach ($pairs as $pair) {
+        $best = max((float)($pair['lev'] ?? 0.0), (float)($pair['sem'] ?? 0.0));
+        if ($best >= $threshold) {
+            $sideA[(int)$pair['a']] = true;
+            $sideB[(int)$pair['b']] = true;
+        }
+    }
+    return [$sideA, $sideB];
 }

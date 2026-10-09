@@ -2,6 +2,7 @@
 require __DIR__ . '/config.php';
 require __DIR__ . '/includes/db.php';
 require __DIR__ . '/includes/helpers.php';
+require __DIR__ . '/includes/similarity.php';
 
 $id = (int)($_GET['id'] ?? 0);
 $stmt = db()->prepare(
@@ -22,10 +23,11 @@ require __DIR__ . '/includes/head.php';
 
 <h1>Submission #<?= (int)$sub['id'] ?> — <?= e($sub['student_name']) ?></h1>
 <p class="muted">
-  Activity: <?= e($sub['activity_title']) ?> &middot;
+  Batch: <?= e($sub['activity_title']) ?> &middot;
   Status: <?= e($sub['status']) ?> &middot;
   Submitted: <?= e($sub['created_at']) ?>
 </p>
+<p><a class="btn small" href="result.php?id=<?= (int)$sub['activity_id'] ?>">Back to batch results</a></p>
 
 <div class="grid two">
   <div class="card">
@@ -37,6 +39,7 @@ require __DIR__ . '/includes/head.php';
   <div class="card">
     <h2>Stats</h2>
     <table class="meta">
+      <tr><th>Detected language</th><td><?= e(language_label((string)$sub['language'])) ?></td></tr>
       <tr><th>Words detected</th><td><?= (int)$sub['word_count'] ?></td></tr>
       <tr><th>Low-confidence words dropped</th><td><?= (int)$sub['low_conf_words'] ?></td></tr>
       <tr><th>Average confidence</th><td><?= e(sprintf('%.0f%%', $sub['avg_confidence'] * 100)) ?></td></tr>
