@@ -88,8 +88,8 @@ require __DIR__ . '/includes/head.php';
   <div class="stat"><div class="stat-value"><?= (int)$summary['essays'] ?></div><div class="stat-label">Essays scanned</div></div>
   <div class="stat"><div class="stat-value"><?= (int)$summary['pairs'] ?></div><div class="stat-label">Pairs compared</div></div>
   <div class="stat is-warn"><div class="stat-value"><?= (int)$summary['flagged'] ?></div><div class="stat-label">Flagged pairs</div></div>
-  <div class="stat is-warn"><div class="stat-value"><?= (int)$summary['pending'] ?></div><div class="stat-label">Pending review</div></div>
 </div>
+
 
 <div class="tabs">
   <?php foreach ($filters as $key => $meta) : ?>
