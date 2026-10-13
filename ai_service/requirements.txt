@@ -1,0 +1,6 @@
+sentence-transformers>=2.2.2
+numpy>=1.23
+scikit-learn>=1.0,<1.9
+gensim>=4.3
+joblib>=1.2
+scipy>=1.9
