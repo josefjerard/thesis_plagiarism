@@ -1,3 +1,14 @@
 config.php
+.venv/
 uploads/*
 !uploads/.gitkeep
+reference_sources/*
+!reference_sources/.gitkeep
+ai_service/models/*
+!ai_service/models/.gitkeep
+ml/data/*
+!ml/data/.gitkeep
+ml/reports/*
+!ml/reports/.gitkeep
+__pycache__/
+*.pyc
