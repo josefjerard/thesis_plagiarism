@@ -36,16 +36,38 @@ $methods = [
     'Semantic'         => $c['semantic_score'] !== null ? (float)$c['semantic_score'] : null,
 ];
 
-$decision = $c['review_status'] === 'pending'
-    ? 'Pending review'
-    : ucwords(str_replace('_', ' ', (string)$c['review_status']));
+$status = (string)$c['review_status'];
+$decision = $status === 'pending'
+    ? 'Undecided'
+    : ($status === 'plagiarized' ? 'Plagiarized' : 'Not plagiarism');
+
+$aiStmt = db()->prepare('SELECT id, ai_score FROM submissions WHERE id IN (?, ?)');
+$aiStmt->execute([(int)$c['submission_a'], (int)$c['submission_b']]);
+$aiById = [];
+foreach ($aiStmt->fetchAll() as $row) {
+    $aiById[(int)$row['id']] = $row['ai_score'];
+}
+$aiA = $aiById[(int)$c['submission_a']] ?? null;
+$aiB = $aiById[(int)$c['submission_b']] ?? null;
+
+$webStmt = db()->prepare('SELECT * FROM web_sources WHERE submission_id IN (?, ?) ORDER BY similarity DESC');
+$webStmt->execute([(int)$c['submission_a'], (int)$c['submission_b']]);
+$webMatches = [];
+foreach ($webStmt->fetchAll() as $row) {
+    $webMatches[(int)$row['submission_id']][] = $row;
+}
+
+function first_n(array $items, int $n): array
+{
+    return array_slice($items, 0, $n);
+}
 
 $pageTitle = 'Similarity report';
 require __DIR__ . '/includes/head.php';
 ?>
 
 <div class="report-actions no-print">
-  <a class="btn" href="<?= e(comparison_url($id)) ?>">Back to review</a>
+  <a class="btn" href="<?= e(comparison_url($id)) ?>">Back to comparison</a>
   <button type="button" class="btn primary" onclick="window.print()">Print / save as PDF</button>
 </div>
 
@@ -62,7 +84,7 @@ require __DIR__ . '/includes/head.php';
     <tr><th>Essay B</th><td><?= e($c['name_b']) ?> (<?= e(language_label((string)$c['lang_b'])) ?>, avg OCR confidence <?= e(sprintf('%.0f%%', $c['avg_b'] * 100)) ?>)</td></tr>
     <tr><th>Hybrid score</th><td><b><?= e(pct($score)) ?></b> &mdash; <?= e(similarity_label($score)) ?></td></tr>
     <tr><th>Flag threshold</th><td><?= e(pct(FLAG_THRESHOLD)) ?> <?= $score >= FLAG_THRESHOLD ? '(flagged)' : '(below threshold)' ?></td></tr>
-    <tr><th>Reviewer decision</th><td><?= e($decision) ?></td></tr>
+    <tr><th>Your decision</th><td><?= e($decision) ?></td></tr>
   </table>
 
   <h2>Method scores</h2>
@@ -74,6 +96,41 @@ require __DIR__ . '/includes/head.php';
       <tr><td>Levenshtein (sentence)</td><td>How close matched sentences are, character by character</td><td><b><?= e(pct($methods['Levenshtein'])) ?></b></td></tr>
       <tr><td>Semantic (embeddings)</td><td>Similar meaning with different wording</td><td><b><?= e(pct($methods['Semantic'])) ?></b></td></tr>
       <tr class="flagged-row"><td>Hybrid</td><td>Weighted combination of the four methods</td><td><b><?= e(pct($score)) ?></b></td></tr>
+    </tbody>
+  </table>
+
+  <h2>AI-likelihood</h2>
+  <p class="muted" style="margin-top:0">Probability that the OCR text was written by an AI tool. An indicator for review, not a verdict.</p>
+  <table class="list">
+    <thead><tr><th>Essay</th><th>AI-likelihood</th></tr></thead>
+    <tbody>
+      <tr><td><?= e($c['name_a']) ?></td><td><?= ai_badge($aiA !== null ? (float)$aiA : null) ?></td></tr>
+      <tr><td><?= e($c['name_b']) ?></td><td><?= ai_badge($aiB !== null ? (float)$aiB : null) ?></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Web source matches</h2>
+  <table class="list">
+    <thead><tr><th>Essay</th><th>Source</th><th>Similarity</th></tr></thead>
+    <tbody>
+      <?php
+        $rows = 0;
+      ?>
+      <?php foreach ([(int)$c['submission_a'], (int)$c['submission_b']] as $sid) :
+          $name = $sid === (int)$c['submission_a'] ? $c['name_a'] : $c['name_b'];
+          $matches = $webMatches[$sid] ?? [];
+      ?>
+        <?php foreach (first_n($matches, 3) as $w) : $rows++; ?>
+          <tr>
+            <td><?= e($name) ?></td>
+            <td><?= e($w['source_name']) ?></td>
+            <td><b><?= e(pct((float)$w['similarity'])) ?></b> <span class="muted">N <?= e(pct($w['ngram_score'] !== null ? (float)$w['ngram_score'] : null)) ?> &middot; T <?= e(pct($w['tfidf_score'] !== null ? (float)$w['tfidf_score'] : null)) ?> &middot; L <?= e(pct($w['lev_score'] !== null ? (float)$w['lev_score'] : null)) ?></span></td>
+          </tr>
+        <?php endforeach; ?>
+      <?php endforeach; ?>
+      <?php if ($rows === 0) : ?>
+        <tr><td colspan="3" class="muted">No web source matches recorded for this pair (local reference corpus only).</td></tr>
+      <?php endif; ?>
     </tbody>
   </table>
 
@@ -113,8 +170,8 @@ require __DIR__ . '/includes/head.php';
   </div>
 
   <p class="muted report-disclaimer">
-    This report supports the reviewer. A high score is evidence, not proof of
-    plagiarism — the final judgment always belongs to the reviewer.
+    This report supports you. A high score is evidence, not proof of
+    plagiarism — the final judgment always belongs to you.
   </p>
 </div>
 

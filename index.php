@@ -6,12 +6,12 @@ require __DIR__ . '/includes/similarity.php';
 
 $pdo = db();
 
-// ---- filters: how the history is narrowed down ----
+// ---- filters: how the Dashboard is narrowed down ----
 $filters = [
-    'all'          => ['label' => 'All',          'pair' => '1=1',                                              'params' => []],
-    'flagged'      => ['label' => 'Flagged',      'pair' => 'c.similarity >= ?',                                 'params' => [FLAG_THRESHOLD]],
-    'needs_review' => ['label' => 'Needs review', 'pair' => "c.review_status = 'pending' AND c.similarity >= ?", 'params' => [FLAG_THRESHOLD]],
-    'reviewed'     => ['label' => 'Reviewed',     'pair' => "c.review_status <> 'pending'",                      'params' => []],
+    'all'          => ['label' => 'All',       'pair' => '1=1',                                              'params' => []],
+    'flagged'      => ['label' => 'Flagged',   'pair' => 'c.similarity >= ?',                                 'params' => [FLAG_THRESHOLD]],
+    'needs_review' => ['label' => 'Undecided', 'pair' => "c.review_status = 'pending' AND c.similarity >= ?", 'params' => [FLAG_THRESHOLD]],
+    'reviewed'     => ['label' => 'Decided',   'pair' => "c.review_status <> 'pending'",                      'params' => []],
 ];
 $filter = (string)($_GET['filter'] ?? 'all');
 if (!isset($filters[$filter])) {
@@ -20,23 +20,21 @@ if (!isset($filters[$filter])) {
 $activePair   = $filters[$filter]['pair'];
 $activeParams = $filters[$filter]['params'];
 
-// ---- summary across every session ----
-$summaryStmt = $pdo->prepare(
+// ---- summary across all activities ----
+$summaryStmt = $pdo->query(
     'SELECT
-        (SELECT COUNT(*) FROM activities)                                            AS sessions,
-        (SELECT COUNT(*) FROM submissions)                                           AS essays,
-        (SELECT COUNT(*) FROM comparisons)                                           AS pairs,
-        (SELECT COUNT(*) FROM comparisons WHERE similarity >= ?)                     AS flagged,
-        (SELECT COUNT(*) FROM comparisons WHERE review_status = \'pending\'
-            AND similarity >= ?)                                                     AS pending'
+        (SELECT COUNT(*) FROM activities)                           AS sessions,
+        (SELECT COUNT(*) FROM submissions)                          AS essays,
+        (SELECT COUNT(*) FROM comparisons)                          AS pairs,
+        (SELECT COUNT(*) FROM submissions WHERE status = \'flagged\') AS flagged'
 );
-$summaryStmt->execute([FLAG_THRESHOLD, FLAG_THRESHOLD]);
-$summary = $summaryStmt->fetch() ?: ['sessions' => 0, 'essays' => 0, 'pairs' => 0, 'flagged' => 0, 'pending' => 0];
+$summary = $summaryStmt->fetch() ?: ['sessions' => 0, 'essays' => 0, 'pairs' => 0, 'flagged' => 0];
 
 // ---- batches (comparison sessions), newest first ----
 $batchSql =
     'SELECT a.id, a.title, a.created_at,
         (SELECT COUNT(*) FROM submissions s WHERE s.activity_id = a.id)                             AS essays,
+        (SELECT COUNT(*) FROM submissions s WHERE s.activity_id = a.id AND s.status = \'flagged\')   AS flagged_essays,
         (SELECT COUNT(*) FROM comparisons c WHERE c.activity_id = a.id)                             AS pairs,
         (SELECT COUNT(*) FROM comparisons c WHERE c.activity_id = a.id AND c.similarity >= ?)       AS flagged,
         (SELECT COUNT(*) FROM comparisons c WHERE c.activity_id = a.id AND c.review_status = \'pending\'
@@ -79,7 +77,7 @@ if ($batches !== []) {
     }
 }
 
-$pageTitle = 'History';
+$pageTitle = 'Dashboard';
 require __DIR__ . '/includes/head.php';
 ?>
 
@@ -87,7 +85,7 @@ require __DIR__ . '/includes/head.php';
   <div class="stat"><div class="stat-value"><?= (int)$summary['sessions'] ?></div><div class="stat-label">Sessions</div></div>
   <div class="stat"><div class="stat-value"><?= (int)$summary['essays'] ?></div><div class="stat-label">Essays scanned</div></div>
   <div class="stat"><div class="stat-value"><?= (int)$summary['pairs'] ?></div><div class="stat-label">Pairs compared</div></div>
-  <div class="stat is-warn"><div class="stat-value"><?= (int)$summary['flagged'] ?></div><div class="stat-label">Flagged pairs</div></div>
+  <div class="stat is-warn"><div class="stat-value"><?= (int)$summary['flagged'] ?></div><div class="stat-label">Flagged essays</div></div>
 </div>
 
 
@@ -101,22 +99,23 @@ require __DIR__ . '/includes/head.php';
   <div class="card">
     <p class="muted" style="margin:0">
       <?= $filter === 'all'
-          ? 'No comparison sessions yet. Upload a batch of essays to get started.'
-          : 'No sessions match this filter.' ?>
+          ? 'No activities yet. Upload a batch of essays to get started.'
+          : 'No activities match this filter.' ?>
     </p>
   </div>
 <?php else : ?>
   <?php foreach ($batches as $b) :
-      $batchId  = (int)$b['id'];
-      $pending  = (int)$b['pending'];
-      $flagged  = (int)$b['flagged'];
-      $maxScore = $b['max_score'] !== null ? (float)$b['max_score'] : null;
-      $rows     = $pairsByBatch[$batchId] ?? [];
+      $batchId      = (int)$b['id'];
+      $pending      = (int)$b['pending'];
+      $flaggedPairs = (int)$b['flagged'];
+      $flaggedEssays = (int)$b['flagged_essays'];
+      $maxScore     = $b['max_score'] !== null ? (float)$b['max_score'] : null;
+      $rows         = $pairsByBatch[$batchId] ?? [];
 
       if ($pending > 0) {
-          $statusBadge = '<span class="badge warn">' . $pending . ' pending</span>';
-      } elseif ($flagged > 0) {
-          $statusBadge = '<span class="badge ok">Reviewed</span>';
+          $statusBadge = '<span class="badge warn">' . $pending . ' undecided</span>';
+      } elseif ($flaggedPairs > 0) {
+          $statusBadge = '<span class="badge ok">Decided</span>';
       } else {
           $statusBadge = '<span class="badge">No flags</span>';
       }
@@ -127,7 +126,7 @@ require __DIR__ . '/includes/head.php';
         <span class="batch-meta"><?= e($b['created_at']) ?></span>
         <span class="badge"><?= (int)$b['essays'] ?> essays</span>
         <span class="badge"><?= (int)$b['pairs'] ?> pairs</span>
-        <?php if ($flagged > 0) : ?><span class="badge warn"><?= $flagged ?> flagged</span><?php endif; ?>
+        <?php if ($flaggedEssays > 0) : ?><span class="badge warn"><?= $flaggedEssays ?> flagged</span><?php endif; ?>
         <?= $statusBadge ?>
         <span class="batch-spacer"></span>
         <?php if ($maxScore !== null) : ?>
@@ -137,11 +136,11 @@ require __DIR__ . '/includes/head.php';
       </summary>
       <div class="batch-inner">
         <?php if ($rows === []) : ?>
-          <p class="muted" style="margin:12px 0 0">No pairs match this filter in this session.</p>
+          <p class="muted" style="margin:12px 0 0">No pairs match this filter in this activity.</p>
         <?php else : ?>
           <table class="list">
             <thead>
-              <tr><th>Score</th><th>Essay A</th><th>Essay B</th><th>Label</th><th>Status</th><th>Reviewed</th><th></th></tr>
+              <tr><th>Score</th><th>Essay A</th><th>Essay B</th><th>Label</th><th>Decision</th><th>Decided</th><th></th></tr>
             </thead>
             <tbody>
             <?php foreach ($rows as $c) : ?>
@@ -160,13 +159,15 @@ require __DIR__ . '/includes/head.php';
                 <td><?= e(similarity_label((float)$c['similarity'])) ?></td>
                 <td>
                   <?php if ($c['review_status'] === 'pending') : ?>
-                    <span class="badge warn">Pending</span>
+                    <span class="badge warn">Undecided</span>
+                  <?php elseif ($c['review_status'] === 'plagiarized') : ?>
+                    <span class="badge warn">Plagiarized</span>
                   <?php else : ?>
-                    <span class="badge <?= $c['review_status'] === 'plagiarized' ? 'warn' : 'ok' ?>"><?= e(ucwords(str_replace('_', ' ', $c['review_status']))) ?></span>
+                    <span class="badge ok">Not plagiarism</span>
                   <?php endif; ?>
                 </td>
                 <td><?= e($c['reviewed_at'] ?? '—') ?></td>
-                <td><a class="btn small" href="<?= e(comparison_url((int)$c['id'])) ?>">Review</a></td>
+                <td><a class="btn small" href="<?= e(comparison_url((int)$c['id'])) ?>">Open</a></td>
               </tr>
             <?php endforeach; ?>
             </tbody>

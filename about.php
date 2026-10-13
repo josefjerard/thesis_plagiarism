@@ -25,10 +25,13 @@ require __DIR__ . '/includes/head.php';
     <tr><th>Flag threshold</th><td>similarity &ge; <?= e(sprintf('%.0f%%', FLAG_THRESHOLD * 100)) ?></td></tr>
     <tr><th>OCR confidence cutoff</th><td>words below <?= e(sprintf('%.0f%%', CONFIDENCE_CUTOFF * 100)) ?> confidence are excluded from comparison</td></tr>
     <tr><th>Semantic service</th><td><?= SEMANTIC_SERVICE_URL !== '' ? e(SEMANTIC_SERVICE_URL) : 'disabled' ?></td></tr>
+    <tr><th>AI-likelihood flag</th><td>highlighted at or above <?= e(sprintf('%.0f%%', (defined('AI_FLAG_THRESHOLD') ? AI_FLAG_THRESHOLD : 0.70) * 100)) ?> <span class="muted">(separate from similarity)</span></td></tr>
+    <tr><th>Internet source check</th><td><?= e(defined('WEB_SOURCE_MODE') ? WEB_SOURCE_MODE : 'local') ?> reference corpus</td></tr>
   </table>
   <p class="muted" style="margin-bottom:0">
-    Only essays in the same language are compared. If fewer than two readable
-    essays are available, no comparison is performed.
+    Only essays in the same language are compared. The internet source check and the
+    AI-likelihood check run on every readable essay. If fewer than two readable
+    essays are available, no pairwise comparison is performed.
   </p>
 </div>
 

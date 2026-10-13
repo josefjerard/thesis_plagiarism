@@ -23,6 +23,7 @@ function migrate_columns(PDO $pdo): array
     $wanted = [
         'submissions' => [
             'language' => "VARCHAR(8) NOT NULL DEFAULT 'en' AFTER confident_text",
+            'ai_score' => 'DECIMAL(6,4) NULL AFTER avg_confidence',
         ],
         'comparisons' => [
             'ngram_score'       => 'DECIMAL(6,4) NULL AFTER similarity',
@@ -91,7 +92,7 @@ if (!is_writable(UPLOAD_DIR)) {
   <p>
     <a href="upload_essays.php">Go to the upload page</a>
     &middot;
-    <a href="index.php">Go to the review history</a>
+    <a href="index.php">Go to the Dashboard</a>
   </p>
   <p class="muted">Security: delete <code>install.php</code> now.</p>
 </div>

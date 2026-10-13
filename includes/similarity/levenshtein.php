@@ -8,7 +8,7 @@ require_once __DIR__ . '/preprocess.php';
  *
  * For each sentence we find its closest counterpart in the other essay and
  * average those best matches (both directions). A greedy one-to-one matching
- * is also produced so the reviewer can see which sentences line up.
+ * is also produced so the matching sentences line up.
  * Stopwords are kept so copied sentences still align.
  */
 

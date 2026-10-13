@@ -37,20 +37,30 @@ foreach ($comparisons as $c) {
     }
 }
 
-$pageTitle = 'Batch results';
+$webStmt = db()->prepare(
+    'SELECT ws.*, s.student_name AS essay_name
+     FROM web_sources ws
+     JOIN submissions s ON s.id = ws.submission_id
+     WHERE s.activity_id = ?
+     ORDER BY ws.similarity DESC'
+);
+$webStmt->execute([$batchId]);
+$webMatches = $webStmt->fetchAll();
+
+$pageTitle = 'Activity results';
 require __DIR__ . '/includes/head.php';
 ?>
 
 <?php if ($flaggedCount > 0) : ?>
   <div class="box warn">
-    <b>Flagged.</b> <?= $flaggedCount ?> pair<?= $flaggedCount === 1 ? '' : 's' ?> in this batch match at or
-    above the <?= e(sprintf('%.0f%%', FLAG_THRESHOLD * 100)) ?> threshold and were sent to the review history.
+    <b>Flagged.</b> <?= $flaggedCount ?> pair<?= $flaggedCount === 1 ? '' : 's' ?> in this activity match at or
+    above the <?= e(sprintf('%.0f%%', FLAG_THRESHOLD * 100)) ?> threshold and are flagged.
   </div>
 <?php else : ?>
-  <div class="box ok">No flagged matches at the current threshold in this batch.</div>
+  <div class="box ok">No flagged matches at the current threshold in this activity.</div>
 <?php endif; ?>
 
-<h1>Batch results</h1>
+<h1>Activity results</h1>
 <p class="muted">
   <?= e($batch['title']) ?> &middot;
   <?= count($submissions) ?> essay<?= count($submissions) === 1 ? '' : 's' ?> &middot;
@@ -58,7 +68,7 @@ require __DIR__ . '/includes/head.php';
 </p>
 
 <div class="card">
-  <h2>Essays in this batch</h2>
+  <h2>Essays in this activity</h2>
   <div class="essay-grid">
     <?php foreach ($submissions as $s) : ?>
       <div class="essay-tile">
@@ -71,6 +81,7 @@ require __DIR__ . '/includes/head.php';
             <?= e(language_label((string)$s['language'])) ?> &middot;
             avg conf <?= e(sprintf('%.0f%%', $s['avg_confidence'] * 100)) ?>
           </div>
+          <div><?= ai_badge($s['ai_score'] !== null ? (float)$s['ai_score'] : null) ?></div>
           <a class="btn small" href="<?= e(submission_url((int)$s['id'])) ?>">Details</a>
         </div>
       </div>
@@ -81,11 +92,11 @@ require __DIR__ . '/includes/head.php';
 <div class="card">
   <h2>Pairwise comparisons</h2>
   <?php if ($comparisons === []) : ?>
-    <p class="muted">No same-language pairs to compare in this batch.</p>
+    <p class="muted">No same-language pairs to compare in this activity.</p>
   <?php else : ?>
     <table class="list">
       <thead>
-        <tr><th>Hybrid score</th><th>Essay A</th><th>Essay B</th><th>Label</th><th>Review status</th><th></th></tr>
+        <tr><th>Hybrid score</th><th>Essay A</th><th>Essay B</th><th>Label</th><th>Decision</th><th></th></tr>
       </thead>
       <tbody>
       <?php foreach ($comparisons as $c) : ?>
@@ -108,8 +119,48 @@ require __DIR__ . '/includes/head.php';
             <?= e($c['name_b']) ?>
           </td>
           <td><?= e(similarity_label((float)$c['similarity'])) ?></td>
-          <td><?= e(ucwords(str_replace('_', ' ', $c['review_status']))) ?></td>
-          <td><a class="btn small" href="<?= e(comparison_url((int)$c['id'])) ?>">Review pair</a></td>
+          <td>
+            <?php if ($c['review_status'] === 'pending') : ?>
+              Undecided
+            <?php elseif ($c['review_status'] === 'plagiarized') : ?>
+              Plagiarized
+            <?php else : ?>
+              Not plagiarism
+            <?php endif; ?>
+          </td>
+          <td><a class="btn small" href="<?= e(comparison_url((int)$c['id'])) ?>">Open</a></td>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  <?php endif; ?>
+</div>
+
+<div class="card">
+  <h2>Web source matches</h2>
+  <?php if ($webMatches === []) : ?>
+    <p class="muted" style="margin:0">
+      <?= WEB_SOURCE_MODE === 'local'
+          ? 'No matches against the reference corpus at the current threshold.'
+          : 'Internet source checks are disabled (set WEB_SOURCE_MODE in config.php).' ?>
+    </p>
+  <?php else : ?>
+    <table class="list">
+      <thead>
+        <tr><th>Similarity</th><th>Essay</th><th>Source</th><th>Breakdown</th><th></th></tr>
+      </thead>
+      <tbody>
+      <?php foreach ($webMatches as $w) : ?>
+        <tr class="<?= (float)$w['similarity'] >= FLAG_THRESHOLD ? 'flagged-row' : '' ?>">
+          <td><b><?= e(pct((float)$w['similarity'])) ?></b></td>
+          <td><?= e($w['essay_name']) ?></td>
+          <td><?= e($w['source_name']) ?></td>
+          <td class="muted">
+            N <?= e(pct($w['ngram_score'] !== null ? (float)$w['ngram_score'] : null)) ?>
+            &middot; T <?= e(pct($w['tfidf_score'] !== null ? (float)$w['tfidf_score'] : null)) ?>
+            &middot; L <?= e(pct($w['lev_score'] !== null ? (float)$w['lev_score'] : null)) ?>
+          </td>
+          <td><a class="btn small" href="submission.php?id=<?= (int)$w['submission_id'] ?>">Details</a></td>
         </tr>
       <?php endforeach; ?>
       </tbody>
@@ -118,8 +169,8 @@ require __DIR__ . '/includes/head.php';
 </div>
 
 <p class="muted">
-  <a class="btn" href="upload_essays.php">Upload another batch</a>
-  <a class="btn" href="index.php">View history</a>
+  <a class="btn" href="upload_essays.php">Upload another activity</a>
+  <a class="btn" href="index.php">Back to Dashboard</a>
 </p>
 
 <?php require __DIR__ . '/includes/foot.php'; ?>

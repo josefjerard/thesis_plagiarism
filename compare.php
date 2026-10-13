@@ -9,8 +9,8 @@ $id = (int)($_GET['id'] ?? 0);
 
 $stmt = $pdo->prepare(
     'SELECT c.*, a.title AS activity_title,
-            s1.student_name AS name_a, s1.image_path AS image_a, s1.raw_text AS raw_a, s1.confident_text AS conf_a, s1.avg_confidence AS avg_a, s1.word_count AS words_a, s1.language AS lang_a,
-            s2.student_name AS name_b, s2.image_path AS image_b, s2.raw_text AS raw_b, s2.confident_text AS conf_b, s2.avg_confidence AS avg_b, s2.word_count AS words_b, s2.language AS lang_b
+            s1.student_name AS name_a, s1.image_path AS image_a, s1.raw_text AS raw_a, s1.confident_text AS conf_a, s1.avg_confidence AS avg_a, s1.word_count AS words_a, s1.language AS lang_a, s1.ai_score AS ai_score_a,
+            s2.student_name AS name_b, s2.image_path AS image_b, s2.raw_text AS raw_b, s2.confident_text AS conf_b, s2.avg_confidence AS avg_b, s2.word_count AS words_b, s2.language AS lang_b, s2.ai_score AS ai_score_b
      FROM comparisons c
      JOIN activities a ON a.id = c.activity_id
      JOIN submissions s1 ON s1.id = c.submission_a
@@ -53,7 +53,7 @@ $pageTitle = 'Compare pair';
 require __DIR__ . '/includes/head.php';
 ?>
 
-<h1>Side-by-side review</h1>
+<h1>Side-by-side comparison</h1>
 <p class="muted">
   Activity: <?= e($c['activity_title']) ?> &middot;
   Languages: <?= e(language_label((string)$c['lang_a'])) ?> / <?= e(language_label((string)$c['lang_b'])) ?> &middot;
@@ -77,7 +77,7 @@ require __DIR__ . '/includes/head.php';
 
 <div class="grid two">
   <div class="card">
-    <h2><?= e($c['name_a']) ?> <span class="badge"><?= e(language_label((string)$c['lang_a'])) ?> &middot; avg conf <?= e(sprintf('%.0f%%', $c['avg_a'] * 100)) ?></span></h2>
+    <h2><?= e($c['name_a']) ?> <span class="badge"><?= e(language_label((string)$c['lang_a'])) ?> &middot; avg conf <?= e(sprintf('%.0f%%', $c['avg_a'] * 100)) ?></span> <?= ai_badge($c['ai_score_a'] !== null ? (float)$c['ai_score_a'] : null) ?></h2>
     <a href="uploads/<?= e(rawurlencode($c['image_a'])) ?>" target="_blank">
       <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay A" class="paper">
     </a>
@@ -88,7 +88,7 @@ require __DIR__ . '/includes/head.php';
     </details>
   </div>
   <div class="card">
-    <h2><?= e($c['name_b']) ?> <span class="badge"><?= e(language_label((string)$c['lang_b'])) ?> &middot; avg conf <?= e(sprintf('%.0f%%', $c['avg_b'] * 100)) ?></span></h2>
+    <h2><?= e($c['name_b']) ?> <span class="badge"><?= e(language_label((string)$c['lang_b'])) ?> &middot; avg conf <?= e(sprintf('%.0f%%', $c['avg_b'] * 100)) ?></span> <?= ai_badge($c['ai_score_b'] !== null ? (float)$c['ai_score_b'] : null) ?></h2>
     <a href="uploads/<?= e(rawurlencode($c['image_b'])) ?>" target="_blank">
       <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay B" class="paper">
     </a>
@@ -101,12 +101,12 @@ require __DIR__ . '/includes/head.php';
 </div>
 
 <form method="post" action="compare.php?id=<?= (int)$id ?>" class="card decision-bar">
-  <p><b>Your call:</b> after looking at the two essays, was this plagiarism?</p>
-  <button type="submit" name="verdict" value="plagiarized" class="btn danger">Plagiarized</button>
-  <button type="submit" name="verdict" value="not_plagiarism" class="btn primary">Not plagiarism</button>
+  <p><b>Your decision:</b> after looking at the two essays, was this plagiarism?</p>
+  <button type="submit" name="verdict" value="plagiarized" class="btn danger">Mark as plagiarized</button>
+  <button type="submit" name="verdict" value="not_plagiarism" class="btn primary">Mark as not plagiarism</button>
   <a class="btn" href="report.php?id=<?= (int)$id ?>">View similarity report</a>
-  <a class="btn" href="result.php?id=<?= (int)$c['activity_id'] ?>">Batch results</a>
-  <a class="btn" href="index.php">Back to history</a>
+  <a class="btn" href="result.php?id=<?= (int)$c['activity_id'] ?>">Activity results</a>
+  <a class="btn" href="index.php">Back to Dashboard</a>
 </form>
 
 <?php require __DIR__ . '/includes/foot.php'; ?>

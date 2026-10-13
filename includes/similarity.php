@@ -18,6 +18,13 @@ if (!defined('W_NGRAM'))           define('W_NGRAM', 0.35);
 if (!defined('W_TFIDF'))           define('W_TFIDF', 0.25);
 if (!defined('W_LEV'))             define('W_LEV', 0.20);
 if (!defined('W_SEMANTIC'))        define('W_SEMANTIC', 0.20);
+if (!defined('AI_SERVICE_URL'))    define('AI_SERVICE_URL', defined('SEMANTIC_SERVICE_URL') ? SEMANTIC_SERVICE_URL : 'http://127.0.0.1:8000');
+if (!defined('AI_TIMEOUT'))        define('AI_TIMEOUT', 30);
+if (!defined('AI_FLAG_THRESHOLD')) define('AI_FLAG_THRESHOLD', 0.70);
+if (!defined('WEB_SOURCE_MODE'))   define('WEB_SOURCE_MODE', 'local');
+if (!defined('WEB_MAX_PAGES'))     define('WEB_MAX_PAGES', 5);
+if (!defined('WEB_CHUNK_SENTENCES')) define('WEB_CHUNK_SENTENCES', 4);
+if (!defined('REFERENCE_DIR'))     define('REFERENCE_DIR', __DIR__ . '/../reference_sources');
 
 require_once __DIR__ . '/similarity/preprocess.php';
 require_once __DIR__ . '/similarity/language.php';
@@ -33,12 +40,13 @@ require_once __DIR__ . '/similarity/hybrid.php';
  * @param array $tokensA stopword-removed tokens for essay A (for TF-IDF)
  * @param array $tokensB stopword-removed tokens for essay B (for TF-IDF)
  * @param array $idf     smoothed IDF map built from the activity corpus
+ * @param string $language essay language, so the service picks the right model
  * @return array{
  *   ngram: float, tfidf: float, lev: float,
  *   semantic: ?float, hybrid: float, matched: array
  * }
  */
-function score_pair(string $textA, string $textB, array $tokensA, array $tokensB, array $idf): array
+function score_pair(string $textA, string $textB, array $tokensA, array $tokensB, array $idf, string $language = 'en'): array
 {
     $ngram = text_similarity($textA, $textB) ?? 0.0;
     $tfidf = cosine_similarity(tfidf_vector($tokensA, $idf), tfidf_vector($tokensB, $idf));
@@ -47,7 +55,7 @@ function score_pair(string $textA, string $textB, array $tokensA, array $tokensB
     $sentB = split_sentences($textB);
 
     $levResult = levenshtein_similarity($sentA, $sentB);
-    $semResult = semantic_similarity($sentA, $sentB);
+    $semResult = semantic_similarity($sentA, $sentB, $language);
     $semantic  = $semResult !== null ? $semResult['score'] : null;
 
     return [
@@ -160,7 +168,8 @@ function store_batch_comparisons(int $activityId): array
                 (string)$rowB['confident_text'],
                 $tokensById[$idA],
                 $tokensById[$idB],
-                $idfByLang[$lang]
+                $idfByLang[$lang],
+                $lang
             );
 
             $insert->execute([

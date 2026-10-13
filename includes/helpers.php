@@ -85,3 +85,14 @@ function comparison_url(int $id): string
 {
     return 'compare.php?id=' . $id;
 }
+
+/** Renders an AI-likelihood badge, or an empty string when the score is null. */
+function ai_badge(?float $score): string
+{
+    if ($score === null) {
+        return '';
+    }
+    $threshold = defined('AI_FLAG_THRESHOLD') ? (float)AI_FLAG_THRESHOLD : 0.70;
+    $class = $score >= $threshold ? 'badge warn' : 'badge';
+    return '<span class="' . $class . '">AI <b>' . round($score * 100) . '%</b></span>';
+}

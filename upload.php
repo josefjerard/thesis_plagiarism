@@ -4,6 +4,8 @@ require __DIR__ . '/includes/db.php';
 require __DIR__ . '/includes/helpers.php';
 require __DIR__ . '/includes/ocr.php';
 require __DIR__ . '/includes/similarity.php';
+require __DIR__ . '/includes/similarity/aidetect.php';
+require __DIR__ . '/includes/websource.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit('Bad request.');
@@ -12,8 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $files = $_FILES['essay_images'] ?? null;
 $names = $_POST['student_names'] ?? [];
 
+$activityName = trim((string)($_POST['activity_name'] ?? ''));
+if ($activityName === '') {
+    flash_set('Please enter an activity name.');
+    redirect('upload_essays.php');
+}
+
 if ($files === null || !is_array($files['name'] ?? null)) {
-    flash_set('Please choose at least two essay images.');
+    flash_set('Please choose at least one essay image.');
     redirect('upload_essays.php');
 }
 
@@ -87,9 +95,9 @@ for ($i = 0; $i < $totalFiles; $i++) {
     ];
 }
 
-// ---- Phase 2: need at least two readable essays to compare ----
-if (count($good) < 2) {
-    $message = 'At least two readable essays are required. ';
+// ---- Phase 2: need at least one readable essay ----
+if (count($good) < 1) {
+    $message = 'At least one readable essay is required. ';
     if ($rejected !== []) {
         $message .= 'Rejected: ' . implode(' | ', $rejected);
     }
@@ -99,8 +107,7 @@ if (count($good) < 2) {
 
 // ---- Phase 3: create the batch, store the essays, then compare within the batch ----
 $pdo = db();
-$batchTitle = 'Batch — ' . date('M j, Y H:i') . ' — ' . count($good) . ' essays';
-$pdo->prepare('INSERT INTO activities (title) VALUES (?)')->execute([$batchTitle]);
+$pdo->prepare('INSERT INTO activities (title) VALUES (?)')->execute([$activityName]);
 $batchId = (int)$pdo->lastInsertId();
 
 $insert = $pdo->prepare(
@@ -108,6 +115,7 @@ $insert = $pdo->prepare(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 
+$storedIds = [];
 foreach ($good as $item) {
     $fileName = random_storage_name($item['ext']);
     $dest = UPLOAD_DIR . DIRECTORY_SEPARATOR . $fileName;
@@ -127,15 +135,33 @@ foreach ($good as $item) {
         $item['ocr']['low_conf_words'],
         $item['ocr']['avg_confidence'],
     ]);
+    $storedIds[] = (int)$pdo->lastInsertId();
 }
 
-$highestBySubmission = store_batch_comparisons($batchId);
+if (count($storedIds) >= 2) {
+    $highestBySubmission = store_batch_comparisons($batchId);
 
-$flag = $pdo->prepare('UPDATE submissions SET status = ? WHERE id = ?');
-foreach ($highestBySubmission as $submissionId => $highest) {
-    if ($highest >= FLAG_THRESHOLD) {
-        $flag->execute(['flagged', $submissionId]);
+    $flag = $pdo->prepare('UPDATE submissions SET status = ? WHERE id = ?');
+    foreach ($highestBySubmission as $submissionId => $highest) {
+        if ($highest >= FLAG_THRESHOLD) {
+            $flag->execute(['flagged', $submissionId]);
+        }
     }
 }
 
-redirect('result.php?id=' . $batchId);
+// ---- AI-likelihood + internet source checks (run on every readable essay) ----
+$aiStmt = $pdo->prepare('UPDATE submissions SET ai_score = ? WHERE id = ?');
+foreach ($storedIds as $i => $submissionId) {
+    $item = $good[$i];
+    $essayText = $item['ocr']['confident_text'] !== '' ? $item['ocr']['confident_text'] : $item['ocr']['raw_text'];
+
+    $ai = ai_likelihood($essayText, $item['language']);
+    if ($ai !== null) {
+        $aiStmt->execute([$ai, $submissionId]);
+    }
+
+    run_web_source_check($submissionId, $essayText);
+}
+
+flash_set('Activity "' . $activityName . '" saved.');
+redirect('index.php');

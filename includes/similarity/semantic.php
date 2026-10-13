@@ -18,9 +18,11 @@ function semantic_service_enabled(): bool
 }
 
 /**
+ * @param string $language 'en' or 'fil'; tells the service which embedding
+ *                         model to use (self-trained models are per language).
  * @return array{score: float, pairs: array}|null
  */
-function semantic_similarity(array $sentencesA, array $sentencesB): ?array
+function semantic_similarity(array $sentencesA, array $sentencesB, string $language = 'en'): ?array
 {
     if (!semantic_service_enabled() || $sentencesA === [] || $sentencesB === []) {
         return null;
@@ -29,6 +31,7 @@ function semantic_similarity(array $sentencesA, array $sentencesB): ?array
     $payload = json_encode([
         'sentences_a' => array_values($sentencesA),
         'sentences_b' => array_values($sentencesB),
+        'language'    => $language,
     ]);
     if ($payload === false) {
         return null;

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   word_count INT UNSIGNED NOT NULL DEFAULT 0,
   low_conf_words INT UNSIGNED NOT NULL DEFAULT 0,
   avg_confidence DECIMAL(5,4) NOT NULL DEFAULT 0,
+  ai_score DECIMAL(6,4) NULL,
   status ENUM('pending','flagged','reviewed') NOT NULL DEFAULT 'pending',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_sub_activity FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE
@@ -42,4 +43,18 @@ CREATE TABLE IF NOT EXISTS comparisons (
   CONSTRAINT fk_comp_activity FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
   CONSTRAINT fk_comp_a FOREIGN KEY (submission_a) REFERENCES submissions(id) ON DELETE CASCADE,
   CONSTRAINT fk_comp_b FOREIGN KEY (submission_b) REFERENCES submissions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS web_sources (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  submission_id INT UNSIGNED NOT NULL,
+  source_name VARCHAR(500) NOT NULL,
+  similarity DECIMAL(6,4) NOT NULL,
+  ngram_score DECIMAL(6,4) NULL,
+  tfidf_score DECIMAL(6,4) NULL,
+  lev_score DECIMAL(6,4) NULL,
+  matched_passages MEDIUMTEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_web_submission (submission_id),
+  CONSTRAINT fk_web_sub FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

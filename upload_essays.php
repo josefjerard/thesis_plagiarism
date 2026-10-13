@@ -15,6 +15,15 @@ require __DIR__ . '/includes/head.php';
 <?php endif; ?>
 
 <form method="post" action="upload.php" enctype="multipart/form-data" class="upload-form card">
+  <div class="field">
+    <label for="activity_name">Activity name</label>
+    <input type="text" name="activity_name" id="activity_name"
+           maxlength="255" required placeholder="e.g. English 101 — Essay 1">
+    <p class="hint" style="margin-top:6px">
+      Pairs scoring &ge; <?= e(sprintf('%.0f%%', FLAG_THRESHOLD * 100)) ?> are flagged automatically.
+    </p>
+  </div>
+
   <label class="dropzone" id="dropzone" for="essay_images">
     <input type="file" name="essay_images[]" id="essay_images"
            accept="image/jpeg,image/png,image/webp" multiple required class="visually-hidden">
@@ -28,13 +37,12 @@ require __DIR__ . '/includes/head.php';
     <span class="dropzone-title">Drag &amp; drop essay photos here</span>
     <span class="dropzone-sub muted">
       or click to browse &middot; JPG, PNG or WEBP &middot; up to <?= e(human_bytes(MAX_UPLOAD_BYTES)) ?> each
-      &middot; add two or more
     </span>
   </label>
 
   <div class="upload-panel" id="upload-panel" hidden>
     <div class="upload-actions">
-      <span class="muted"><b id="file-count">0</b> essay(s) selected</span>
+      <span class="muted">Number of essays: <b id="file-count">0</b></span>
       <button type="button" class="btn clear-all" id="clear-files">Clear all</button>
     </div>
     <div class="upload-grid" id="upload-grid"></div>
@@ -186,9 +194,9 @@ require __DIR__ . '/includes/head.php';
   });
 
   form.addEventListener('submit', function (e) {
-    if (items.length < 2) {
+    if (items.length < 1) {
       e.preventDefault();
-      showError('Please add at least two essay images before uploading.');
+      showError('Please add at least one essay image before uploading.');
       return;
     }
     clearError();

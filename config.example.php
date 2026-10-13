@@ -22,7 +22,7 @@ define('SHINGLE_SIZE', 5);
 // Which formula scores a pair: 'dice' or 'jaccard'.
 define('SIM_METHOD', 'dice');
 
-// Pairs with similarity >= this are flagged for admin review.
+// Pairs with similarity >= this are flagged automatically.
 define('FLAG_THRESHOLD', 0.30);
 
 // Words with per-word OCR confidence < this are EXCLUDED from the comparison text.
@@ -43,11 +43,29 @@ define('W_SEMANTIC', 0.20);
 define('LEVEL_HIGH', 0.70);
 define('LEVEL_MODERATE', 0.30);
 
-// Sentence pairs at/above this score are highlighted in the review view.
+// Sentence pairs at/above this score are highlighted in the comparison view.
 define('HIGHLIGHT_THRESHOLD', 0.60);
 
-// --- Semantic similarity service (local Python, sentence-transformers) ---
+// --- Semantic similarity service (local Python, see ai_service/) ---
 // Leave SEMANTIC_SERVICE_URL empty to disable the method; the hybrid score
 // then renormalizes over the remaining three methods.
 define('SEMANTIC_SERVICE_URL', 'http://127.0.0.1:8000');
 define('SEMANTIC_TIMEOUT', 30);
+
+// --- AI-text likelihood service (local Python, same ai_service/) ---
+// Leave AI_SERVICE_URL empty to disable the AI-likelihood check.
+// Defaults to the semantic service URL so they share one process.
+define('AI_SERVICE_URL', 'http://127.0.0.1:8000');
+define('AI_TIMEOUT', 30);
+
+// AI-likelihood at or above this is highlighted for review.
+define('AI_FLAG_THRESHOLD', 0.70);
+
+// --- Internet source checking (runs at scan time) ---
+// WEB_SOURCE_MODE 'local' matches each essay against the plain-text files in
+// REFERENCE_DIR (one .txt file per source). The 'search' mode (search-API
+// driven candidate finding) is not implemented yet.
+define('WEB_SOURCE_MODE', 'local');
+define('WEB_MAX_PAGES', 5);
+define('WEB_CHUNK_SENTENCES', 4);
+define('REFERENCE_DIR', __DIR__ . '/reference_sources');
