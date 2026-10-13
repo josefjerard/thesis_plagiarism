@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/preprocess.php';
 
+// Fallbacks so the engine still runs if config.php predates a setting.
+if (!defined('SHINGLE_SIZE')) define('SHINGLE_SIZE', 5);
+if (!defined('SIM_METHOD'))   define('SIM_METHOD', 'dice');
+
 /**
  * Character n-gram similarity (OCR-error-robust).
  *
