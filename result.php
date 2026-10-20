@@ -19,8 +19,8 @@ $submissions = $subStmt->fetchAll();
 
 $compStmt = db()->prepare(
     'SELECT c.*,
-            s1.student_name AS name_a, s1.image_path AS image_a, s1.language AS lang_a,
-            s2.student_name AS name_b, s2.image_path AS image_b, s2.language AS lang_b
+            s1.student_name AS name_a, s1.image_path AS image_a, s1.source_type AS type_a, s1.language AS lang_a,
+            s2.student_name AS name_b, s2.image_path AS image_b, s2.source_type AS type_b, s2.language AS lang_b
      FROM comparisons c
      JOIN submissions s1 ON s1.id = c.submission_a
      JOIN submissions s2 ON s2.id = c.submission_b
@@ -72,9 +72,17 @@ require __DIR__ . '/includes/head.php';
   <div class="essay-grid">
     <?php foreach ($submissions as $s) : ?>
       <div class="essay-tile">
-        <a href="uploads/<?= e(rawurlencode($s['image_path'])) ?>" target="_blank">
-          <img src="uploads/<?= e(rawurlencode($s['image_path'])) ?>" alt="<?= e($s['student_name']) ?>">
-        </a>
+        <?php if ($s['source_type'] === 'text') : ?>
+          <div class="text-file-tile">
+            <b>Text submission</b>
+            <span><?= e($s['image_path']) ?></span>
+            <p class="text-file-excerpt"><?= e(text_excerpt($s['raw_text'])) ?></p>
+          </div>
+        <?php else : ?>
+          <a href="uploads/<?= e(rawurlencode($s['image_path'])) ?>" target="_blank">
+            <img src="uploads/<?= e(rawurlencode($s['image_path'])) ?>" alt="<?= e($s['student_name']) ?>">
+          </a>
+        <?php endif; ?>
         <div class="essay-tile-body">
           <b><?= e($s['student_name']) ?></b>
           <div class="muted">
@@ -111,11 +119,19 @@ require __DIR__ . '/includes/head.php';
             </div>
           </td>
           <td>
-            <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay" class="thumb">
+            <?php if ($c['type_a'] === 'text') : ?>
+              <span class="text-file-tile"><b>Text</b><span><?= e($c['image_a']) ?></span></span>
+            <?php else : ?>
+              <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay" class="thumb">
+            <?php endif; ?>
             <?= e($c['name_a']) ?>
           </td>
           <td>
-            <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay" class="thumb">
+            <?php if ($c['type_b'] === 'text') : ?>
+              <span class="text-file-tile"><b>Text</b><span><?= e($c['image_b']) ?></span></span>
+            <?php else : ?>
+              <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay" class="thumb">
+            <?php endif; ?>
             <?= e($c['name_b']) ?>
           </td>
           <td><?= e(similarity_label((float)$c['similarity'])) ?></td>

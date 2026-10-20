@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   activity_id INT UNSIGNED NOT NULL,
   student_name VARCHAR(255) NOT NULL,
   image_path VARCHAR(500) NOT NULL,
+  source_type ENUM('image','text') NOT NULL DEFAULT 'image',
   raw_text MEDIUMTEXT NULL,
   confident_text MEDIUMTEXT NULL,
   language VARCHAR(8) NOT NULL DEFAULT 'en',

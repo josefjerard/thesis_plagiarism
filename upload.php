@@ -13,6 +13,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $files = $_FILES['essay_images'] ?? null;
 $names = $_POST['student_names'] ?? [];
+$configuredMode = defined('INPUT_MODE') && in_array(INPUT_MODE, ['text', 'image'], true)
+    ? INPUT_MODE
+    : 'text';
+$postedMode = (string)($_POST['input_mode'] ?? '');
+$mode = in_array($postedMode, ['text', 'image'], true) ? $postedMode : $configuredMode;
 
 $activityName = trim((string)($_POST['activity_name'] ?? ''));
 if ($activityName === '') {
@@ -21,7 +26,7 @@ if ($activityName === '') {
 }
 
 if ($files === null || !is_array($files['name'] ?? null)) {
-    flash_set('Please choose at least one essay image.');
+    flash_set('Please choose at least one essay file.');
     redirect('upload_essays.php');
 }
 
@@ -36,7 +41,7 @@ if (!is_dir(UPLOAD_DIR) || !is_writable(UPLOAD_DIR)) {
     redirect('upload_essays.php');
 }
 
-// ---- Phase 1: validate and OCR every selected file, keep only readable ones ----
+// ---- Phase 1: validate every selected file and prepare its comparison text ----
 $good       = [];
 $rejected   = [];
 $totalFiles = count($files['name']);
@@ -62,42 +67,87 @@ for ($i = 0; $i < $totalFiles; $i++) {
     }
 
     $tmp = (string)($files['tmp_name'][$i] ?? '');
-    if ((int)($files['size'][$i] ?? 0) > MAX_UPLOAD_BYTES) {
-        $rejected[] = $label . ': image is too large (max ' . human_bytes(MAX_UPLOAD_BYTES) . ').';
-        continue;
-    }
+    if ($mode === 'text') {
+        if (strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) !== 'txt') {
+            $rejected[] = $label . ': unsupported file type (TXT only).';
+            continue;
+        }
+        if ((int)($files['size'][$i] ?? 0) > MAX_UPLOAD_BYTES) {
+            $rejected[] = $label . ': text file is too large (max ' . human_bytes(MAX_UPLOAD_BYTES) . ').';
+            continue;
+        }
 
-    $imageInfo = @getimagesize($tmp);
-    if ($imageInfo === false || !isset($allowed[$imageInfo[2]])) {
-        $rejected[] = $label . ': unsupported or corrupt file (JPG, PNG, or WEBP only).';
-        continue;
-    }
+        $contents = file_get_contents($tmp);
+        if ($contents === false) {
+            $rejected[] = $label . ': could not read the uploaded text file.';
+            continue;
+        }
+        try {
+            $ocr = text_file_to_ocr_shape($contents);
+        } catch (InvalidArgumentException $ex) {
+            $rejected[] = $label . ': ' . $ex->getMessage();
+            continue;
+        }
 
-    try {
-        $ocr = vision_ocr((string)file_get_contents($tmp));
-    } catch (Throwable $ex) {
-        $rejected[] = $label . ': OCR failed — ' . $ex->getMessage();
-        continue;
-    }
+        if (trim($ocr['raw_text']) === '') {
+            $rejected[] = $label . ': text file is empty.';
+            continue;
+        }
+        $minimumWords = defined('TEXT_MIN_WORDS')
+            ? (int)TEXT_MIN_WORDS
+            : (defined('READABILITY_MIN_WORDS') ? (int)READABILITY_MIN_WORDS : 20);
+        if ($ocr['word_count'] < $minimumWords) {
+            $rejected[] = $label . ': text is too short (' . $ocr['word_count'] . ' words; minimum ' . $minimumWords . ').';
+            continue;
+        }
 
-    if (!image_is_readable($ocr)) {
-        $rejected[] = $label . ': unreadable image (only ' . $ocr['word_count'] . ' words at ' .
-                      sprintf('%.0f%%', $ocr['avg_confidence'] * 100) . ' average confidence).';
-        continue;
-    }
+        $good[] = [
+            'label'    => $label,
+            'ext'      => 'txt',
+            'tmp'      => $tmp,
+            'ocr'      => $ocr,
+            'language' => detect_language($ocr['confident_text']),
+        ];
+    } else {
+        if ((int)($files['size'][$i] ?? 0) > MAX_UPLOAD_BYTES) {
+            $rejected[] = $label . ': image is too large (max ' . human_bytes(MAX_UPLOAD_BYTES) . ').';
+            continue;
+        }
 
-    $good[] = [
-        'label'    => $label,
-        'ext'      => $allowed[$imageInfo[2]],
-        'tmp'      => $tmp,
-        'ocr'      => $ocr,
-        'language' => detect_language($ocr['confident_text'] !== '' ? $ocr['confident_text'] : $ocr['raw_text']),
-    ];
+        $imageInfo = @getimagesize($tmp);
+        if ($imageInfo === false || !isset($allowed[$imageInfo[2]])) {
+            $rejected[] = $label . ': unsupported or corrupt file (JPG, PNG, or WEBP only).';
+            continue;
+        }
+
+        try {
+            $ocr = vision_ocr((string)file_get_contents($tmp));
+        } catch (Throwable $ex) {
+            $rejected[] = $label . ': OCR failed — ' . $ex->getMessage();
+            continue;
+        }
+
+        if (!image_is_readable($ocr)) {
+            $rejected[] = $label . ': unreadable image (only ' . $ocr['word_count'] . ' words at ' .
+                          sprintf('%.0f%%', $ocr['avg_confidence'] * 100) . ' average confidence).';
+            continue;
+        }
+
+        $good[] = [
+            'label'    => $label,
+            'ext'      => $allowed[$imageInfo[2]],
+            'tmp'      => $tmp,
+            'ocr'      => $ocr,
+            'language' => detect_language($ocr['confident_text'] !== '' ? $ocr['confident_text'] : $ocr['raw_text']),
+        ];
+    }
 }
 
 // ---- Phase 2: need at least one readable essay ----
 if (count($good) < 1) {
-    $message = 'At least one readable essay is required. ';
+    $message = $mode === 'text'
+        ? 'At least one valid text essay is required. '
+        : 'At least one readable essay is required. ';
     if ($rejected !== []) {
         $message .= 'Rejected: ' . implode(' | ', $rejected);
     }
@@ -111,8 +161,8 @@ $pdo->prepare('INSERT INTO activities (title) VALUES (?)')->execute([$activityNa
 $batchId = (int)$pdo->lastInsertId();
 
 $insert = $pdo->prepare(
-    'INSERT INTO submissions (activity_id, student_name, image_path, raw_text, confident_text, language, word_count, low_conf_words, avg_confidence)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO submissions (activity_id, student_name, image_path, source_type, raw_text, confident_text, language, word_count, low_conf_words, avg_confidence)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
 );
 
 $storedIds = [];
@@ -128,6 +178,7 @@ foreach ($good as $item) {
         $batchId,
         $item['label'],
         $fileName,
+        $mode,
         $item['ocr']['raw_text'],
         $item['ocr']['confident_text'],
         $item['language'],
@@ -163,5 +214,9 @@ foreach ($storedIds as $i => $submissionId) {
     run_web_source_check($submissionId, $essayText);
 }
 
-flash_set('Activity "' . $activityName . '" saved.');
+$message = 'Activity "' . $activityName . '" saved.';
+if ($rejected !== []) {
+    $message .= ' Rejected: ' . implode(' | ', $rejected);
+}
+flash_set($message);
 redirect('index.php');

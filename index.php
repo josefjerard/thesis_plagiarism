@@ -62,8 +62,8 @@ if ($batches !== []) {
 
     $pairSql =
         'SELECT c.id, c.activity_id, c.similarity, c.review_status, c.reviewed_at,
-                s1.id AS id_a, s1.student_name AS name_a, s1.image_path AS image_a,
-                s2.id AS id_b, s2.student_name AS name_b, s2.image_path AS image_b
+                s1.id AS id_a, s1.student_name AS name_a, s1.image_path AS image_a, s1.source_type AS type_a,
+                s2.id AS id_b, s2.student_name AS name_b, s2.image_path AS image_b, s2.source_type AS type_b
          FROM comparisons c
          JOIN submissions s1 ON s1.id = c.submission_a
          JOIN submissions s2 ON s2.id = c.submission_b
@@ -149,11 +149,19 @@ require __DIR__ . '/includes/head.php';
                   <b><?= e(pct((float)$c['similarity'])) ?></b>
                 </td>
                 <td>
-                  <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay" class="thumb">
+                  <?php if ($c['type_a'] === 'text') : ?>
+                    <span class="text-file-tile"><b>Text</b><span><?= e($c['image_a']) ?></span></span>
+                  <?php else : ?>
+                    <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay" class="thumb">
+                  <?php endif; ?>
                   <a href="<?= e(submission_url((int)$c['id_a'])) ?>"><?= e($c['name_a']) ?></a>
                 </td>
                 <td>
-                  <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay" class="thumb">
+                  <?php if ($c['type_b'] === 'text') : ?>
+                    <span class="text-file-tile"><b>Text</b><span><?= e($c['image_b']) ?></span></span>
+                  <?php else : ?>
+                    <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay" class="thumb">
+                  <?php endif; ?>
                   <a href="<?= e(submission_url((int)$c['id_b'])) ?>"><?= e($c['name_b']) ?></a>
                 </td>
                 <td><?= e(similarity_label((float)$c['similarity'])) ?></td>

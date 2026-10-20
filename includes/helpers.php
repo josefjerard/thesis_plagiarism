@@ -43,6 +43,39 @@ function human_bytes(int $bytes): string
     return round($bytes / 1024, 0) . ' KB';
 }
 
+/** Returns a safe-length text preview while preserving UTF-8 characters. */
+function text_excerpt(?string $text, int $length = 120): string
+{
+    $preview = preg_replace('/\s+/u', ' ', trim((string)$text)) ?? '';
+    if (function_exists('mb_substr')) {
+        return mb_substr($preview, 0, $length, 'UTF-8');
+    }
+    return substr($preview, 0, $length);
+}
+
+/** Builds the OCR-compatible result shape for a validated UTF-8 text upload. */
+function text_file_to_ocr_shape(string $contents): array
+{
+    if (str_starts_with($contents, "\xEF\xBB\xBF")) {
+        $contents = substr($contents, 3);
+    }
+    if (!preg_match('//u', $contents)) {
+        throw new InvalidArgumentException('file is not valid UTF-8 text.');
+    }
+
+    $text = str_replace("\r\n", "\n", $contents);
+    $trimmed = trim($text);
+    $words = $trimmed === '' ? [] : preg_split('/\s+/u', $trimmed);
+
+    return [
+        'raw_text' => $text,
+        'confident_text' => $text,
+        'word_count' => count($words),
+        'low_conf_words' => 0,
+        'avg_confidence' => 1.0,
+    ];
+}
+
 /** Formats a 0..1 similarity score as a whole percentage, or an em dash if null. */
 function pct(?float $value): string
 {

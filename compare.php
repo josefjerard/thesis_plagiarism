@@ -9,8 +9,8 @@ $id = (int)($_GET['id'] ?? 0);
 
 $stmt = $pdo->prepare(
     'SELECT c.*, a.title AS activity_title,
-            s1.student_name AS name_a, s1.image_path AS image_a, s1.raw_text AS raw_a, s1.confident_text AS conf_a, s1.avg_confidence AS avg_a, s1.word_count AS words_a, s1.language AS lang_a, s1.ai_score AS ai_score_a,
-            s2.student_name AS name_b, s2.image_path AS image_b, s2.raw_text AS raw_b, s2.confident_text AS conf_b, s2.avg_confidence AS avg_b, s2.word_count AS words_b, s2.language AS lang_b, s2.ai_score AS ai_score_b
+            s1.student_name AS name_a, s1.image_path AS image_a, s1.source_type AS type_a, s1.raw_text AS raw_a, s1.confident_text AS conf_a, s1.avg_confidence AS avg_a, s1.word_count AS words_a, s1.language AS lang_a, s1.ai_score AS ai_score_a,
+            s2.student_name AS name_b, s2.image_path AS image_b, s2.source_type AS type_b, s2.raw_text AS raw_b, s2.confident_text AS conf_b, s2.avg_confidence AS avg_b, s2.word_count AS words_b, s2.language AS lang_b, s2.ai_score AS ai_score_b
      FROM comparisons c
      JOIN activities a ON a.id = c.activity_id
      JOIN submissions s1 ON s1.id = c.submission_a
@@ -77,24 +77,34 @@ require __DIR__ . '/includes/head.php';
 
 <div class="grid two">
   <div class="card">
-    <h2><?= e($c['name_a']) ?> <span class="badge"><?= e(language_label((string)$c['lang_a'])) ?> &middot; avg conf <?= e(sprintf('%.0f%%', $c['avg_a'] * 100)) ?></span> <?= ai_badge($c['ai_score_a'] !== null ? (float)$c['ai_score_a'] : null) ?></h2>
-    <a href="uploads/<?= e(rawurlencode($c['image_a'])) ?>" target="_blank">
-      <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay A" class="paper">
-    </a>
+    <h2><?= e($c['name_a']) ?> <span class="badge"><?= e(language_label((string)$c['lang_a'])) ?> &middot; <?= $c['type_a'] === 'text' ? 'text input' : 'avg conf ' . e(sprintf('%.0f%%', $c['avg_a'] * 100)) ?></span> <?= ai_badge($c['ai_score_a'] !== null ? (float)$c['ai_score_a'] : null) ?></h2>
+    <?php if ($c['type_a'] === 'text') : ?>
+      <div class="text-file-tile"><b>Text submission</b><span><?= e($c['image_a']) ?></span></div>
+      <pre class="text-out"><?= e($c['raw_a']) ?></pre>
+    <?php else : ?>
+      <a href="uploads/<?= e(rawurlencode($c['image_a'])) ?>" target="_blank">
+        <img src="uploads/<?= e(rawurlencode($c['image_a'])) ?>" alt="essay A" class="paper">
+      </a>
+    <?php endif; ?>
     <div class="sentence-view"><?= highlighted_sentences($sentA, $hlA) ?></div>
     <details class="text-out-wrap">
-      <summary>Full OCR transcription (<?= (int)$c['words_a'] ?> words)</summary>
+      <summary><?= $c['type_a'] === 'text' ? 'Full submitted text' : 'Full OCR transcription' ?> (<?= (int)$c['words_a'] ?> words)</summary>
       <pre class="text-out"><?= e($c['raw_a']) ?></pre>
     </details>
   </div>
   <div class="card">
-    <h2><?= e($c['name_b']) ?> <span class="badge"><?= e(language_label((string)$c['lang_b'])) ?> &middot; avg conf <?= e(sprintf('%.0f%%', $c['avg_b'] * 100)) ?></span> <?= ai_badge($c['ai_score_b'] !== null ? (float)$c['ai_score_b'] : null) ?></h2>
-    <a href="uploads/<?= e(rawurlencode($c['image_b'])) ?>" target="_blank">
-      <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay B" class="paper">
-    </a>
+    <h2><?= e($c['name_b']) ?> <span class="badge"><?= e(language_label((string)$c['lang_b'])) ?> &middot; <?= $c['type_b'] === 'text' ? 'text input' : 'avg conf ' . e(sprintf('%.0f%%', $c['avg_b'] * 100)) ?></span> <?= ai_badge($c['ai_score_b'] !== null ? (float)$c['ai_score_b'] : null) ?></h2>
+    <?php if ($c['type_b'] === 'text') : ?>
+      <div class="text-file-tile"><b>Text submission</b><span><?= e($c['image_b']) ?></span></div>
+      <pre class="text-out"><?= e($c['raw_b']) ?></pre>
+    <?php else : ?>
+      <a href="uploads/<?= e(rawurlencode($c['image_b'])) ?>" target="_blank">
+        <img src="uploads/<?= e(rawurlencode($c['image_b'])) ?>" alt="essay B" class="paper">
+      </a>
+    <?php endif; ?>
     <div class="sentence-view"><?= highlighted_sentences($sentB, $hlB) ?></div>
     <details class="text-out-wrap">
-      <summary>Full OCR transcription (<?= (int)$c['words_b'] ?> words)</summary>
+      <summary><?= $c['type_b'] === 'text' ? 'Full submitted text' : 'Full OCR transcription' ?> (<?= (int)$c['words_b'] ?> words)</summary>
       <pre class="text-out"><?= e($c['raw_b']) ?></pre>
     </details>
   </div>

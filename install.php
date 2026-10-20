@@ -24,6 +24,7 @@ function migrate_columns(PDO $pdo): array
         'submissions' => [
             'language' => "VARCHAR(8) NOT NULL DEFAULT 'en' AFTER confident_text",
             'ai_score' => 'DECIMAL(6,4) NULL AFTER avg_confidence',
+            'source_type' => "ENUM('image','text') NOT NULL DEFAULT 'image' AFTER image_path",
         ],
         'comparisons' => [
             'ngram_score'       => 'DECIMAL(6,4) NULL AFTER similarity',

@@ -34,30 +34,43 @@ require __DIR__ . '/includes/head.php';
 
 <div class="grid two">
   <div class="card">
-    <h2>Image</h2>
-    <a href="<?= e($imageUrl) ?>" target="_blank">
-      <img src="<?= e($imageUrl) ?>" alt="Submitted essay" class="paper">
-    </a>
+    <?php if ($sub['source_type'] === 'text') : ?>
+      <h2>Text submission</h2>
+      <div class="text-file-tile">
+        <b><?= e($sub['image_path']) ?></b>
+        <p class="text-file-excerpt"><?= e(text_excerpt($sub['raw_text'])) ?></p>
+      </div>
+    <?php else : ?>
+      <h2>Image</h2>
+      <a href="<?= e($imageUrl) ?>" target="_blank">
+        <img src="<?= e($imageUrl) ?>" alt="Submitted essay" class="paper">
+      </a>
+    <?php endif; ?>
   </div>
   <div class="card">
     <h2>Stats</h2>
     <table class="meta">
       <tr><th>Detected language</th><td><?= e(language_label((string)$sub['language'])) ?></td></tr>
       <tr><th>Words detected</th><td><?= (int)$sub['word_count'] ?></td></tr>
-      <tr><th>Low-confidence words dropped</th><td><?= (int)$sub['low_conf_words'] ?></td></tr>
-      <tr><th>Average confidence</th><td><?= e(sprintf('%.0f%%', $sub['avg_confidence'] * 100)) ?></td></tr>
+      <?php if ($sub['source_type'] === 'text') : ?>
+        <tr><th>Low-confidence words dropped</th><td>0</td></tr>
+        <tr><th>Text input confidence</th><td>100%</td></tr>
+      <?php else : ?>
+        <tr><th>Low-confidence words dropped</th><td><?= (int)$sub['low_conf_words'] ?></td></tr>
+        <tr><th>Average confidence</th><td><?= e(sprintf('%.0f%%', $sub['avg_confidence'] * 100)) ?></td></tr>
+      <?php endif; ?>
       <tr><th>AI-likelihood</th><td><?= $sub['ai_score'] !== null ? e(sprintf('%.0f%%', $sub['ai_score'] * 100)) : '— (no detector model yet)' ?></td></tr>
     </table>
   </div>
 </div>
 
 <div class="card">
-  <h2>Raw OCR transcription <span class="badge">all words</span></h2>
+  <h2><?= $sub['source_type'] === 'text' ? 'Submitted text' : 'Raw OCR transcription' ?> <span class="badge">all words</span></h2>
   <pre class="text-out"><?= e($sub['raw_text']) ?></pre>
 </div>
 
 <div class="card">
-  <h2>Text used for similarity <span class="badge">confidence &ge; <?= e(sprintf('%.0f%%', CONFIDENCE_CUTOFF * 100)) ?></span></h2>
+  <h2>Text used for similarity <?php if ($sub['source_type'] === 'image') : ?><span class="badge">confidence &ge; <?= e(sprintf('%.0f%%', CONFIDENCE_CUTOFF * 100)) ?></span><?php endif; ?></h2>
   <pre class="text-out"><?= e($sub['confident_text']) ?></pre>
 </div>
 

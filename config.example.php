@@ -8,8 +8,11 @@ define('DB_NAME', 'thesis_plagiarism');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 
-// Google Cloud Vision API key (restricted). Uploads fail until this is set.
+// Google Cloud Vision API key (restricted). Required only for image uploads.
 define('GOOGLE_VISION_API_KEY', '');
+
+// Select the default upload input; the upload page can override this per batch.
+define('INPUT_MODE', 'text');
 
 // Storage
 define('UPLOAD_DIR', __DIR__ . '/uploads');
@@ -31,6 +34,7 @@ define('CONFIDENCE_CUTOFF', 0.60);
 // Readability gate: below either of these the image is rejected and the student is asked to re-upload.
 define('READABILITY_MIN_WORDS', 20);
 define('READABILITY_MIN_AVG_CONF', 0.50);
+define('TEXT_MIN_WORDS', 20);
 
 // --- Hybrid score weights (must sum to 1) ---
 // Final = w1*NGram + w2*TFIDF + w3*Lev + w4*Semantic

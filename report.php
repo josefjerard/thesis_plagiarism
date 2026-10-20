@@ -7,8 +7,8 @@ require __DIR__ . '/includes/similarity.php';
 $id = (int)($_GET['id'] ?? 0);
 $stmt = db()->prepare(
     'SELECT c.*, a.title AS activity_title,
-            s1.student_name AS name_a, s1.image_path AS image_a, s1.confident_text AS conf_a, s1.language AS lang_a, s1.avg_confidence AS avg_a,
-            s2.student_name AS name_b, s2.image_path AS image_b, s2.confident_text AS conf_b, s2.language AS lang_b, s2.avg_confidence AS avg_b
+            s1.student_name AS name_a, s1.image_path AS image_a, s1.source_type AS type_a, s1.confident_text AS conf_a, s1.language AS lang_a, s1.avg_confidence AS avg_a,
+            s2.student_name AS name_b, s2.image_path AS image_b, s2.source_type AS type_b, s2.confident_text AS conf_b, s2.language AS lang_b, s2.avg_confidence AS avg_b
      FROM comparisons c
      JOIN activities a ON a.id = c.activity_id
      JOIN submissions s1 ON s1.id = c.submission_a
@@ -80,8 +80,8 @@ require __DIR__ . '/includes/head.php';
   </p>
 
   <table class="meta report-meta">
-    <tr><th>Essay A</th><td><?= e($c['name_a']) ?> (<?= e(language_label((string)$c['lang_a'])) ?>, avg OCR confidence <?= e(sprintf('%.0f%%', $c['avg_a'] * 100)) ?>)</td></tr>
-    <tr><th>Essay B</th><td><?= e($c['name_b']) ?> (<?= e(language_label((string)$c['lang_b'])) ?>, avg OCR confidence <?= e(sprintf('%.0f%%', $c['avg_b'] * 100)) ?>)</td></tr>
+    <tr><th>Essay A</th><td><?= e($c['name_a']) ?> (<?= e(language_label((string)$c['lang_a'])) ?>, <?= $c['type_a'] === 'text' ? 'text input' : 'avg OCR confidence ' . e(sprintf('%.0f%%', $c['avg_a'] * 100)) ?>; <?= e($c['image_a']) ?>)</td></tr>
+    <tr><th>Essay B</th><td><?= e($c['name_b']) ?> (<?= e(language_label((string)$c['lang_b'])) ?>, <?= $c['type_b'] === 'text' ? 'text input' : 'avg OCR confidence ' . e(sprintf('%.0f%%', $c['avg_b'] * 100)) ?>; <?= e($c['image_b']) ?>)</td></tr>
     <tr><th>Hybrid score</th><td><b><?= e(pct($score)) ?></b> &mdash; <?= e(similarity_label($score)) ?></td></tr>
     <tr><th>Flag threshold</th><td><?= e(pct(FLAG_THRESHOLD)) ?> <?= $score >= FLAG_THRESHOLD ? '(flagged)' : '(below threshold)' ?></td></tr>
     <tr><th>Your decision</th><td><?= e($decision) ?></td></tr>

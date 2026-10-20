@@ -1,6 +1,6 @@
 # Web-Based Essay Plagiarism Scanner Using Hybrid Text and Semantic Similarity Analysis
 
-A web-based system that checks suspected handwritten essays for three kinds of copying: **copying from other students' essays**, **copying from reference sources**, and **AI-generated writing**. The user uploads a batch of essay photos, names the activity, and gives each essay a name. The system transcribes them with OCR, scores every same-language pair with four similarity methods, combines the scores into one hybrid score, checks each essay against the reference-source corpus, estimates how likely each essay is to be AI-written, highlights the matching sentences, and generates a report. Built as a Computer Science thesis project.
+A web-based system that checks essays for three kinds of copying: **copying from other students' essays**, **copying from reference sources**, and **AI-generated writing**. The user uploads a batch of essay images or `.txt` files, names the activity, and gives each essay a name. Images are transcribed with OCR; text files enter the same pipeline directly. The system scores every same-language pair with four similarity methods, combines the scores into one hybrid score, checks each essay against the reference-source corpus, estimates how likely each essay is to be AI-written, highlights the matching sentences, and generates a report. Built as a Computer Science thesis project.
 
 The AI components (the semantic similarity model and the AI-text detector) will be **trained by us on our own dataset**. They are not integrated from an external AI service.
 
@@ -13,6 +13,7 @@ The system supports one user. It does not decide on plagiarism: the final judgme
 | Component | Status |
 |---|---|
 | Image upload and file validation | Implemented |
+| Text-file input mode | Implemented for testing the full flow without OCR |
 | OCR (Google Cloud Vision) with per-word confidence | Implemented |
 | Readability check (rejects unreadable images) | Implemented |
 | Confidence-based word filtering | Implemented |
@@ -36,10 +37,14 @@ The system supports one user. It does not decide on plagiarism: the final judgme
 
 ## How it works
 
-1. The user enters an activity name, selects several suspected essay images at once, and gives each one a name. The number of essays is counted automatically.
-2. The system validates each file and extracts text with OCR, with a confidence score for every word.
-3. Images that fail the readability check are rejected. At least one readable essay is required to continue; two or more are needed for the pairwise check.
-4. Words below the confidence cutoff are removed from the comparison text. The raw OCR text is kept for review.
+### Input modes (text and image)
+
+Use the upload-page selector to choose a mode for each batch. Text mode accepts UTF-8 `.txt` files directly and does not call OCR; image mode keeps the existing photo validation and Google Vision OCR flow. Both modes then use the same downstream comparison, highlighting, AI-likelihood, web-source, and report pipeline.
+
+1. The user enters an activity name, chooses text-file or image mode, selects several essays at once, and gives each one a name. The number of essays is counted automatically. `INPUT_MODE` sets the default; the upload-page selector can override it for a batch.
+2. In image mode, the system validates each image and extracts text with OCR, with a confidence score for every word. In text mode, it validates UTF-8 `.txt` files and uses the submitted text directly (at least 20 words by default), without requiring a Vision API key.
+3. Images that fail the readability check and text files that are empty or too short are rejected. At least one valid essay is required to continue; two or more are needed for the pairwise check.
+4. In image mode, words below the confidence cutoff are removed from the comparison text and the raw OCR text is kept for review. Text mode uses the submitted text as both the raw and comparison text.
 5. The text is preprocessed (normalization, tokenization, stopword removal).
 6. The system detects each essay's dominant language (Filipino or English). Only essays in the same language are compared with each other.
 7. **Pairwise check:** every same-language pair in the activity is scored with four methods, and the scores are combined into a hybrid score. Each pair is classified by similarity level, its matching sentences are highlighted, and the pairs are ranked.
@@ -48,7 +53,7 @@ The system supports one user. It does not decide on plagiarism: the final judgme
 10. The user reviews the pairs, web matches, and AI-likelihood scores, and records the final decision.
 11. The system generates the report.
 
-If fewer than two readable essays are available, no pairwise comparison is performed and the user is notified. The internet source check and the AI-likelihood check still run on each readable essay, since they do not need a second essay.
+If fewer than two valid essays are available, no pairwise comparison is performed and the user is notified. The internet source check and the AI-likelihood check still run on each valid essay, since they do not need a second essay.
 
 ## Algorithms
 
@@ -126,6 +131,7 @@ The embedding models and the AI-text detector are trained separately for each la
 - **Backend:** PHP
 - **Database:** MySQL
 - **Local environment:** XAMPP
+- **Input modes (text and image):** image mode uses Google Cloud Vision; text mode sends `.txt` contents directly into the same analysis pipeline for testing.
 - **OCR:** Google Cloud Vision API (Document Text Detection)
 - **AI service:** Python with the standard library `http.server`, `scikit-learn`, `gensim`, `joblib`, and `numpy` (`ai_service/`). It serves sentence embeddings and AI-text detection. Self-trained models are used where available, with the pretrained `paraphrase-multilingual-MiniLM-L12-v2` model as a fallback for embeddings until they are trained.
 - **Model training:** Python with `scikit-learn`, `pandas`, `gensim`, and `joblib` (`ml/`).
@@ -133,11 +139,13 @@ The embedding models and the AI-text detector are trained separately for each la
 
 ## Project structure
 
+Input modes (text and image) are implemented by the upload page and handler; both share the existing analysis pipeline.
+
 ```
 thesis_plagiarism/
 ├── index.php            Dashboard (default page; activities newest first + filters)
-├── upload_essays.php    upload page (activity name + select images)
-├── upload.php           handles the activity, runs OCR, comparison, web and AI checks
+├── upload_essays.php    upload page (activity name + text or image input mode)
+├── upload.php           handles uploads, OCR or direct text input, comparison, web and AI checks
 ├── result.php           activity results (all pairs, web matches, AI-likelihood)
 ├── about.php            how the scanner scores
 ├── compare.php          side-by-side comparison
@@ -145,6 +153,7 @@ thesis_plagiarism/
 ├── submission.php       submission details (text, AI score, web matches)
 ├── install.php          one-time setup (delete after use)
 ├── database.sql         database schema
+├── migrate_add_source_type.sql  adds the input-mode discriminator to an existing database
 ├── .gitignore           excludes config.php and generated data
 ├── config.example.php   configuration template
 ├── includes/
@@ -179,6 +188,7 @@ thesis_plagiarism/
 │   └── requirements.txt
 ├── semantic_service/    legacy first-version pretrained service
 ├── reference_sources/   plain-text sources for web checking (not committed)
+├── sample_essays/       text-mode flow test essays
 ├── assets/
 └── uploads/             uploaded images (not committed)
 ```
@@ -188,9 +198,9 @@ thesis_plagiarism/
 1. Install XAMPP and start Apache and MySQL.
 2. Place the project folder in `htdocs`.
 3. Create an empty database named `thesis_plagiarism` in phpMyAdmin.
-4. Copy `config.example.php` to `config.php` and fill in your values, including the Google Cloud Vision API key.
+4. Copy `config.example.php` to `config.php` and fill in your values. A Google Cloud Vision API key is required only for image mode; `INPUT_MODE` defaults to `text` and can be overridden on the upload page.
 5. Open `http://localhost/thesis_plagiarism/install.php` once to create the tables, then delete `install.php`.
-6. Open `http://localhost/thesis_plagiarism/`, enter an activity name, select the essay images in one batch, name each one, and upload them together. The new activity then appears at the top of the Dashboard.
+6. Open `http://localhost/thesis_plagiarism/`, enter an activity name, select text files or essay images in one batch, name each one, and upload them together. The new activity then appears at the top of the Dashboard.
 7. Optional: put plain-text sources (`.txt`) in `reference_sources/` to check essays against the local internet-source corpus.
 
 **For the custom AI models:**
@@ -203,7 +213,7 @@ thesis_plagiarism/
 
 If the Python service is not running, the semantic similarity and AI-likelihood checks are skipped, and the hybrid score renormalizes over the other three methods. The AI-likelihood section is left blank until a detector model has been trained.
 
-If you already had the database from an earlier version, re-run `install.php` once; it adds the new columns without touching existing rows.
+If you already had the database from an earlier version, re-run `install.php` once; it adds missing columns without touching existing rows. Alternatively, run `migrate_add_source_type.sql` once against the existing database.
 
 `config.php` holds your API key and is excluded from version control. Never commit it or share it.
 
@@ -215,12 +225,14 @@ Current settings in `config.php`:
 |---|---|
 | `DB_HOST` / `DB_NAME` / `DB_USER` / `DB_PASS` | MySQL connection settings |
 | `GOOGLE_VISION_API_KEY` | API key for OCR |
+| `INPUT_MODE` | Default upload mode: `text` or `image` (upload page can override it per batch) |
 | `SHINGLE_SIZE` | Character n-gram size (default 5) |
 | `SIM_METHOD` | `dice` or `jaccard` |
 | `FLAG_THRESHOLD` | An essay is flagged when its highest hybrid score against any other essay is at or above this value |
 | `CONFIDENCE_CUTOFF` | Words below this OCR confidence are excluded |
 | `READABILITY_MIN_WORDS` / `READABILITY_MIN_AVG_CONF` | Readability gate |
-| `UPLOAD_DIR` | Folder where uploaded images are stored |
+| `TEXT_MIN_WORDS` | Minimum words accepted in text mode (default 20) |
+| `UPLOAD_DIR` | Folder where uploaded images and text files are stored |
 | `MAX_UPLOAD_BYTES` | Upload size limit |
 | `W_NGRAM` / `W_TFIDF` / `W_LEV` / `W_SEMANTIC` | Hybrid weights (sum to 1) |
 | `LEVEL_HIGH` / `LEVEL_MODERATE` | Similarity-level cutoffs for the human label |
