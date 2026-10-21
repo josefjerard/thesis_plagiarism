@@ -1,0 +1,73 @@
+### p16
+
+Cheating in school is a problem that affects both students and the quality of education. Some students cheat because they are afraid of failing, while others do it because they feel unprepared or believe that getting high grades is more important than learning. Although cheating may help someone earn a better score temporarily, it can prevent them from developing the knowledge and skills they need in the future. Schools should therefore understand why students cheat and create an environment that encourages honesty.
+
+One common reason students cheat is academic pressure. Many students feel that they must maintain high grades to satisfy their parents, qualify for scholarships, or meet their own expectations. When several examinations and assignments happen within a short period, some may feel that cheating is their only way to succeed. Others struggle with time management and begin studying only when an examination is approaching. Instead of accepting the possibility of a low score, they may copy answers from classmates or search for unauthorized information during tests.
+
+Peer influence can also contribute to dishonesty. If students see their classmates cheating without facing consequences, they may begin to think that the behavior is acceptable. In some situations, students even feel pressured to share answers because they do not want to disappoint their friends.
+
+I experienced a situation in which a classmate asked me for answers shortly before a deadline. It would have been easier to send the completed work, but I realized that doing so would not help that person understand the lesson. Instead, I offered to explain how I approached the questions. This experience showed me that helping someone learn is more valuable than simply giving them the answers.
+
+Schools can discourage cheating by teaching students about academic integrity and providing support when they struggle. Teachers should explain the consequences of dishonesty while also giving students opportunities to ask questions and seek assistance. Reasonable workloads, clear examination rules, and assessments that measure understanding rather than memorization can also reduce the temptation to cheat. Furthermore, consequences should be fair and consistently applied.
+
+Ultimately, preventing cheating requires cooperation between students, teachers, and school administrators. Students must take responsibility for their actions, while schools should address the pressures that encourage dishonest behavior. When academic success is measured through genuine learning and personal improvement, students have stronger reasons to choose honesty over shortcuts.
+
+### p17
+
+An effective teacher does more than explain lessons and give examinations. A memorable teacher helps students understand difficult ideas, encourages them to improve, and creates an environment where they feel comfortable learning. Although teaching requires subject knowledge, the way a teacher communicates and treats students can make an equally important difference. The teachers who leave a lasting impression are often those who combine competence with patience, fairness, and genuine concern for their students.
+
+One important quality of an effective teacher is the ability to explain complicated topics clearly. Students have different learning styles and levels of understanding, so a teacher should be willing to use examples, demonstrations, and alternative explanations when necessary. Simply repeating the same explanation may not help someone who is already confused. A good teacher recognizes this and looks for another way to make the lesson understandable.
+
+Patience is another valuable quality. Some students need more time to understand a concept or gain confidence in answering questions. When teachers respond to mistakes with embarrassment or anger, students may become afraid to participate. However, teachers who treat mistakes as opportunities for improvement encourage students to ask questions and learn from their experiences. Fairness is equally important because students should feel that their grades and treatment are based on their work rather than personal favoritism.
+
+I remember struggling with a programming exercise because I could not understand why my code produced an incorrect result. Instead of simply telling me the answer, my instructor guided me through the logic and encouraged me to examine each step. Although I still needed time to solve the problem, the experience helped me understand the concept more clearly. It also made me more willing to ask questions when I encountered similar difficulties.
+
+Beyond classroom instruction, memorable teachers demonstrate respect and genuine interest in student development. They recognize that students may face personal challenges that affect their academic performance. While maintaining appropriate standards, they can provide guidance and encouragement that help students regain motivation. They also serve as examples through their professionalism, honesty, and willingness to admit when they make mistakes.
+
+An effective teacher does not need to be entertaining every moment or have an answer to every question. What matters is the ability to create meaningful learning experiences and inspire students to keep improving. In the long run, students may forget specific lessons or examination questions, but they are likely to remember teachers who helped them believe in their abilities and encouraged them to become better learners.
+
+### p18
+
+Screen time has become a normal part of modern life because people use phones, computers, tablets, and televisions for education, communication, and entertainment. These devices provide many advantages, especially for students who need to research information or attend online classes. However, spending too much time in front of a screen can negatively affect physical health, sleep, concentration, and personal relationships. For this reason, I believe excessive screen time can be harmful when people fail to manage it properly.
+
+One major concern is its effect on physical health. Using digital devices for long periods often involves sitting in the same position, which reduces opportunities for physical activity. Students who spend most of their free time playing games or watching videos may exercise less frequently. Prolonged screen use can also cause eye strain, headaches, and discomfort in the neck or back. These problems may become more noticeable when people use their devices without taking breaks or maintaining proper posture.
+
+Sleep is another important issue. Some people stay awake late at night scrolling through social media or watching videos because they want to see just one more post. This habit can reduce their sleeping hours and make them feel tired the following day. Insufficient sleep may then affect their ability to concentrate during classes, remember information, and complete assignments efficiently.
+
+I have experienced spending more time than planned watching online videos when I should have been studying. Although the videos seemed harmless at first, I eventually realized that I had lost a significant amount of time. I had to rush through my schoolwork afterward, which made the task more stressful. That experience taught me that even enjoyable activities can become a problem when they interfere with important responsibilities.
+
+Excessive screen time may also affect relationships. When people constantly check their phones during conversations, others may feel ignored. Furthermore, depending heavily on digital entertainment can reduce opportunities for outdoor activities, face-to-face communication, and hobbies that do not involve technology.
+
+Nevertheless, screen time is not automatically harmful. Digital devices allow students to access educational resources, develop technical skills, and communicate with distant relatives and friends. The important factor is how much time people spend using them and what they do during that time.
+
+To maintain a healthy balance, individuals can set reasonable limits, take regular breaks, avoid screens before bedtime, and make time for exercise and social interaction. Ultimately, technology should support people's daily lives rather than control their routines. Responsible screen use allows individuals to enjoy its benefits while reducing its potential disadvantages.
+
+### p19
+
+Automation is expected to change the kinds of jobs available over the next twenty years as businesses continue to adopt artificial intelligence, robotics, and other advanced technologies. Machines can already perform many repetitive tasks, analyze large amounts of information, and assist people in making decisions. As these capabilities improve, some traditional jobs may disappear or become less common, while new opportunities will emerge in industries that depend on technology, creativity, and human interaction.
+
+One major change will involve jobs that require repetitive or predictable tasks. In factories, automated equipment can assemble products with speed and consistency. In offices, software can process invoices, organize records, and perform basic data entry. Businesses may use AI tools to answer common customer questions or generate preliminary reports. These developments can reduce costs and improve efficiency, but they may also decrease the demand for workers whose responsibilities can be automated easily.
+
+However, automation does not necessarily mean that all affected workers will become unemployed. Some occupations will change rather than disappear completely. Employees may spend less time completing routine tasks and more time checking results, solving problems, and communicating with customers. At the same time, demand may increase for software developers, robotics technicians, cybersecurity specialists, and professionals who maintain automated systems. Other fields, including healthcare, education, and skilled trades, will continue to require human judgment, practical ability, and interpersonal skills.
+
+As a computer science student, I can imagine how automation might affect entry-level programming jobs. AI tools can already generate simple code and help identify errors. This may make basic programming tasks faster, but it also means that students like me need to understand the code rather than depend entirely on generated answers. Learning problem-solving, debugging, and system design will be important for remaining useful in a changing workplace.
+
+Automation may also create challenges involving income inequality and access to employment. Workers who cannot afford additional training may find it difficult to transition into new occupations. Governments, educational institutions, and employers should therefore provide affordable training programs and opportunities for workers to develop new skills. Schools should also teach digital literacy, adaptability, communication, and critical thinking instead of focusing only on tasks that technology can easily perform.
+
+Overall, automation will likely transform employment rather than simply eliminate work. Some jobs will decline, others will develop new responsibilities, and entirely new occupations may emerge. The greatest advantage will belong to people who are willing to continue learning and adapting. By preparing workers for technological change and supporting those whose jobs are affected, society can benefit from automation while reducing its negative consequences.
+
+### p20
+
+Public transportation plays an important role in improving life in crowded cities. As urban populations grow, more people travel daily for work, education, business, and personal responsibilities. When most residents depend on private vehicles, roads become congested, travel times increase, and air pollution becomes more serious. An efficient public transportation system can address these problems by allowing more people to travel using fewer vehicles while making essential destinations easier to reach.
+
+One major benefit of public transportation is the reduction of traffic congestion. Buses, trains, and other shared transport services can carry many passengers at once. If more commuters choose these options instead of driving separate cars or motorcycles, fewer vehicles will occupy the roads. This can make travel more predictable and reduce the time people spend sitting in traffic. For employees and students, shorter and more reliable journeys can provide additional time for work, studying, and rest.
+
+Public transportation can also make cities more affordable. Owning a private vehicle involves expenses such as fuel, maintenance, parking, and insurance. Although public transportation fares can still be burdensome for some households, shared transport is often less expensive than maintaining a personal vehicle. Affordable and accessible services are particularly valuable for students, workers, and families with limited incomes because they allow people to reach schools, hospitals, markets, and employment centers without needing a car.
+
+I have experienced how heavy traffic can affect a student's daily schedule. A journey that seems manageable under normal conditions can take much longer during rush hour. When commuting consumes too much time, it becomes harder to arrive at class on time or complete schoolwork after returning home. Reliable public transportation could help reduce this problem by providing commuters with more consistent travel options.
+
+Environmental benefits are also significant. When public transportation attracts enough passengers, it can reduce fuel consumption and emissions per passenger compared with many individual vehicle trips. Cleaner buses and well-designed train systems can further improve urban air quality. However, these benefits depend on proper planning, efficient operations, and sufficient passenger use.
+
+Despite its advantages, public transportation must address problems such as overcrowding, delays, poor maintenance, and limited routes. Passengers may avoid public services when vehicles are uncomfortable, unsafe, or unreliable. City governments should invest in infrastructure, maintain vehicles regularly, improve accessibility for people with disabilities, and coordinate routes to connect residential areas with important destinations.
+
+In conclusion, effective public transportation can reduce congestion, lower commuting costs, improve accessibility, and support a cleaner urban environment. Its success depends on consistent investment and attention to passenger needs. By providing reliable and affordable transportation, crowded cities can become more convenient, inclusive, and livable for their residents.

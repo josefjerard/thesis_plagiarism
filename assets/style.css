@@ -102,6 +102,8 @@ table.meta td { text-align: right; padding: 4px 0; }
 }
 .badge.warn { background: #fde68a; color: #92400e; }
 .badge.ok { background: #a7f3d0; color: #065f46; }
+.badge.muted { background: #f3f4f6; color: #6b7280; }
+.box.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
 
 .text-out {
   background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;

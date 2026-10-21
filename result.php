@@ -37,6 +37,16 @@ foreach ($comparisons as $c) {
     }
 }
 
+$unavailableAiCount = 0;
+$highAiCount = 0;
+foreach ($submissions as $submission) {
+    if ($submission['ai_score'] === null) {
+        $unavailableAiCount++;
+    } elseif ((float)$submission['ai_score'] >= AI_FLAG_THRESHOLD) {
+        $highAiCount++;
+    }
+}
+
 $webStmt = db()->prepare(
     'SELECT ws.*, s.student_name AS essay_name
      FROM web_sources ws
@@ -51,13 +61,30 @@ $pageTitle = 'Activity results';
 require __DIR__ . '/includes/head.php';
 ?>
 
-<?php if ($flaggedCount > 0) : ?>
+<?php if (count($submissions) < 2) : ?>
+  <div class="box info">
+    Only one essay was uploaded, so there is nothing to compare it with. Upload at least two essays to run the similarity check.
+  </div>
+<?php elseif ($flaggedCount > 0) : ?>
   <div class="box warn">
     <b>Flagged.</b> <?= $flaggedCount ?> pair<?= $flaggedCount === 1 ? '' : 's' ?> in this activity match at or
     above the <?= e(sprintf('%.0f%%', FLAG_THRESHOLD * 100)) ?> threshold and are flagged.
   </div>
 <?php else : ?>
-  <div class="box ok">No flagged matches at the current threshold in this activity.</div>
+  <div class="box ok">No essay pairs reached the similarity threshold. This does not include the AI check.</div>
+<?php endif; ?>
+
+<?php if ($unavailableAiCount > 0) : ?>
+  <div class="box info">
+    AI check did not run for <?= $unavailableAiCount ?> essay<?= $unavailableAiCount === 1 ? '' : 's' ?>.
+    The detector may not be trained or ai_service may be offline.
+  </div>
+<?php endif; ?>
+
+<?php if ($highAiCount > 0) : ?>
+  <div class="box warn">
+    <?= $highAiCount ?> essay<?= $highAiCount === 1 ? '' : 's' ?> have a high AI-likelihood.
+  </div>
 <?php endif; ?>
 
 <h1>Activity results</h1>

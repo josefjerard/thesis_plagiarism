@@ -119,11 +119,11 @@ function comparison_url(int $id): string
     return 'compare.php?id=' . $id;
 }
 
-/** Renders an AI-likelihood badge, or an empty string when the score is null. */
+/** Renders an AI-likelihood badge, including when the detector has no result. */
 function ai_badge(?float $score): string
 {
     if ($score === null) {
-        return '';
+        return '<span class="badge muted" title="The AI-text detector did not return a result. Check that ai_service is running and that a detector model has been trained.">AI check unavailable</span>';
     }
     $threshold = defined('AI_FLAG_THRESHOLD') ? (float)AI_FLAG_THRESHOLD : 0.70;
     $class = $score >= $threshold ? 'badge warn' : 'badge';

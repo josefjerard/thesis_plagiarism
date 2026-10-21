@@ -59,7 +59,7 @@ require __DIR__ . '/includes/head.php';
         <tr><th>Low-confidence words dropped</th><td><?= (int)$sub['low_conf_words'] ?></td></tr>
         <tr><th>Average confidence</th><td><?= e(sprintf('%.0f%%', $sub['avg_confidence'] * 100)) ?></td></tr>
       <?php endif; ?>
-      <tr><th>AI-likelihood</th><td><?= $sub['ai_score'] !== null ? e(sprintf('%.0f%%', $sub['ai_score'] * 100)) : '— (no detector model yet)' ?></td></tr>
+      <tr><th>AI-likelihood</th><td><?= $sub['ai_score'] !== null ? e(sprintf('%.0f%%', $sub['ai_score'] * 100)) : 'AI check unavailable' ?></td></tr>
     </table>
   </div>
 </div>
