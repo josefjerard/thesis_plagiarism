@@ -66,10 +66,17 @@ define('AI_TIMEOUT', 30);
 define('AI_FLAG_THRESHOLD', 0.70);
 
 // --- Internet source checking (runs at scan time) ---
-// WEB_SOURCE_MODE 'local' matches each essay against the plain-text files in
-// REFERENCE_DIR (one .txt file per source). The 'search' mode (search-API
-// driven candidate finding) is not implemented yet.
-define('WEB_SOURCE_MODE', 'local');
+// Choose 'local', 'search', or 'both'. Search mode sends selected essay
+// sentences to Serper; leave the key empty until you configure the service.
+define('WEB_SOURCE_MODE', 'search');
 define('WEB_MAX_PAGES', 5);
 define('WEB_CHUNK_SENTENCES', 4);
 define('REFERENCE_DIR', __DIR__ . '/reference_sources');
+define('WEB_SEARCH_PROVIDER', 'serper');
+define('WEB_SEARCH_API_KEY', '');
+define('WEB_SEARCH_MAX_QUERIES', 8);
+define('WEB_SEARCH_RESULTS_PER_QUERY', 5);
+define('WEB_SEARCH_TIMEOUT', 10);
+define('WEB_SEARCH_PHRASE_WORDS', 18);
+define('WEB_SEARCH_MIN_SENTENCE_WORDS', 10);
+define('WEB_SEARCH_CACHE_DIR', __DIR__ . '/cache/websearch');

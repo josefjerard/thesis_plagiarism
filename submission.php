@@ -76,16 +76,36 @@ require __DIR__ . '/includes/head.php';
 
 <div class="card">
   <h2>Web source matches <span class="badge"><?= count($webMatches) ?></span></h2>
+  <?php $webStatusMessage = web_check_status_message(isset($sub['web_check_status']) ? (string)$sub['web_check_status'] : null); ?>
   <?php if ($webMatches === []) : ?>
-    <p class="muted" style="margin:0">No matches against the local reference corpus.</p>
+    <p class="muted" style="margin:0">
+      <?= e($webStatusMessage ?? 'No matches against the local reference corpus.') ?>
+    </p>
   <?php else : ?>
+    <?php if ($webStatusMessage !== null && $sub['web_check_status'] !== 'ok') : ?>
+      <p class="muted"><?= e($webStatusMessage) ?></p>
+    <?php endif; ?>
     <?php
       $sent = split_sentences((string)($sub['confident_text'] !== '' ? $sub['confident_text'] : $sub['raw_text']));
     ?>
     <?php foreach ($webMatches as $w) : ?>
+      <?php
+        $source = (string)$w['source_name'];
+        $isWebSource = preg_match('~^https?://~i', $source) === 1;
+        $sourceMeta = json_decode((string)$w['matched_passages'], true);
+        $sourceTitle = is_string($sourceMeta['title'] ?? null) ? trim($sourceMeta['title']) : '';
+        $sourceDomain = $isWebSource ? (string)(parse_url($source, PHP_URL_HOST) ?: $source) : '';
+      ?>
       <div class="web-match">
         <p class="web-match-head">
-          <strong><?= e($w['source_name']) ?></strong>
+          <strong>
+            <?php if ($isWebSource) : ?>
+              <a href="<?= e($source) ?>" target="_blank" rel="noopener noreferrer"><?= e($sourceTitle !== '' ? $sourceTitle : $source) ?></a>
+              <span class="muted"><?= e($sourceDomain) ?></span>
+            <?php else : ?>
+              <?= e($source) ?>
+            <?php endif; ?>
+          </strong>
           <span class="badge warn">similarity <?= e(pct((float)$w['similarity'])) ?></span>
         </p>
         <table class="meta">
@@ -107,7 +127,7 @@ require __DIR__ . '/includes/head.php';
             ?>
               <li>
                 <div class="muted">Essay: <?= e($essaySentence) ?></div>
-                <div>Source: <?= e($p['src']) ?></div>
+                <div>Source snippet: <?= e($p['src']) ?></div>
                 <div class="muted">score <?= e(pct((float)$p['score'])) ?></div>
               </li>
             <?php endforeach; ?>

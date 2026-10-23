@@ -26,14 +26,13 @@ The system supports one user. It does not decide on plagiarism: the final judgme
 | Hybrid score | Implemented |
 | Sentence-level highlighting | Implemented |
 | Similarity report | Implemented |
-| Internet source checking (local reference corpus) | Implemented |
+| Internet source checking (local corpus and Serper web search; per-submission status) | Implemented |
 | AI-likelihood client and service (`ai_service/`) | Implemented |
 | ML training scripts (`ml/`) | Implemented |
 | Training dataset (human and AI essays, English) | Planned |
 | Self-trained AI-text detector (model) | Planned — pipeline ready, needs training data |
 | Self-trained semantic embedding model | Optional, not required |
 | AI-likelihood and web-source sections in the report | Implemented (AI-likelihood populates once the detector is trained) |
-| Internet source search mode (candidate pages from a search API) | Planned |
 
 ## How it works
 
@@ -48,7 +47,7 @@ Use the upload-page selector to choose a mode for each batch. Text mode accepts 
 5. The text is preprocessed with normalization and tokenization.
 6. Essays are expected to be written in English.
 7. **Pairwise check:** every essay pair in the activity is scored with four methods, and the scores are combined into a hybrid score. Each pair is classified by similarity level, its matching sentences are highlighted, and the pairs are ranked.
-8. **Internet source check:** each essay is split into chunks, the most substantial chunks are compared against a local reference corpus (`reference_sources/`) with n-gram, TF-IDF, and Levenshtein similarity, and the matching sources and overlapping passages are listed. Matching pages found through a search API is the planned next step.
+8. **Internet source check:** each essay is compared against a local reference corpus, candidate pages from Serper web search, or both. Matching sources and snippets are listed.
 9. **AI-likelihood check:** the trained detector gives each essay a probability of being AI-generated. This is an indicator for review, not a verdict.
 10. The user reviews the pairs, web matches, and AI-likelihood scores, and records the final decision.
 11. The system generates the report.
@@ -64,7 +63,7 @@ If fewer than two valid essays are available, no pairwise comparison is performe
 | 3 | Levenshtein similarity, applied per sentence | How close matched sentences are, character by character |
 | 4 | Semantic similarity (cosine). Current: pretrained sentence embeddings. Optional: self-trained word embeddings | Similar meaning with different wording |
 | 5 | Hybrid score | The four scores combined |
-| 6 | Internet source matching (local reference corpus) | Overlap between an essay and a reference source, using methods 1 to 3 |
+| 6 | Internet source matching | Overlap between an essay and local sources or web-search snippets |
 | 7 | AI-text detector (self-trained classifier) | Probability that an essay was written by an AI tool |
 
 Formulas:
@@ -111,14 +110,21 @@ A single CSV with the columns `text, label, language, source, prompt_id`; the de
 
 ## Internet source checking
 
-This module runs at scan time and is written by us. The current mode compares each essay against a **local reference corpus** of plain-text sources, so no external search service is needed.
+This module runs at scan time and is written by us. Set `WEB_SOURCE_MODE` to `local`, `search`, or `both`. Search mode uses Serper to find candidate pages and compares result snippets with selected essay sentences; local mode compares with plain-text files in `reference_sources/`.
 
-1. Split the essay into chunks of a few sentences and select the most substantial ones.
-2. Compare each chunk against every reference document in `reference_sources/` (one `.txt` file per source).
-3. Score each pair with n-gram, TF-IDF, and Levenshtein similarity, and combine them.
-4. Report the matched source, the similarity score, and the highlighted overlapping passages.
+The search configuration is in `config.php` (copy `config.example.php` first):
 
-It can only find what is in the local corpus, so collection is deliberate: add the pages, articles, or documents you want to check against as `.txt` files. A future search mode that finds candidate pages online can extend this without changing the rest of the pipeline.
+- `WEB_SEARCH_PROVIDER`: currently `serper`.
+- `WEB_SEARCH_API_KEY`: create a key at [serper.dev](https://serper.dev/) and keep it private.
+- `WEB_SEARCH_MAX_QUERIES`: maximum search requests per essay (default 8).
+- `WEB_SEARCH_RESULTS_PER_QUERY`: candidate results per request (default 5).
+- `WEB_SEARCH_TIMEOUT`: request timeout in seconds (default 10).
+- `WEB_SEARCH_PHRASE_WORDS`: maximum sentence words sent as an exact-phrase query (default 18).
+- `WEB_SEARCH_MIN_SENTENCE_WORDS`: minimum sentence length eligible for a query (default 10).
+- `WEB_SEARCH_CACHE_DIR`: cached response directory (default `cache/websearch/`).
+- `WEB_MAX_PAGES`: maximum source matches retained per essay.
+
+Repeated queries are served from the local response cache. Search failures do not stop uploads and are recorded in the submission's web-check status. **Privacy:** in `search` or `both` mode, selected sentences from submitted essays are sent to the third-party Serper search service. Set `WEB_SOURCE_MODE` to `local` to turn that off. Local mode can still compare against `.txt` sources placed in `reference_sources/`.
 
 ## Languages
 
@@ -162,7 +168,7 @@ thesis_plagiarism/
 │   ├── helpers.php
 │   ├── ocr.php
 │   ├── similarity.php   engine orchestrator (scoring + storage)
-│   ├── websource.php    internet source checking (local reference corpus)
+│   ├── websource.php    local and online source checking
 │   └── similarity/
 │       ├── preprocess.php    normalization, tokenization, sentences
 │       ├── language.php      language detection
@@ -212,7 +218,7 @@ thesis_plagiarism/
 
 If the Python service is not running, the semantic similarity and AI-likelihood checks are skipped, and the hybrid score renormalizes over the other three methods. The AI-likelihood section is left blank until a detector model has been trained.
 
-If you already had the database from an earlier version, re-run `install.php` once; it adds missing columns without touching existing rows. Alternatively, run `migrate_add_source_type.sql` once against the existing database.
+If you already had the database from an earlier version, re-run `install.php` once; it adds missing columns without touching existing rows. Alternatively, run the applicable migration scripts such as `migrate_add_source_type.sql` and `migrate_add_web_check_status.sql` once against the existing database.
 
 `config.php` holds your API key and is excluded from version control. Never commit it or share it.
 
@@ -239,10 +245,15 @@ Current settings in `config.php`:
 | `SEMANTIC_SERVICE_URL` / `SEMANTIC_TIMEOUT` | Local Python service address and timeout for embeddings |
 | `AI_SERVICE_URL` / `AI_TIMEOUT` | Local Python service address and timeout for AI-text detection (defaults to the semantic URL) |
 | `AI_FLAG_THRESHOLD` | AI-likelihood at or above which an essay is highlighted for review |
-| `WEB_SOURCE_MODE` | How candidate sources are found (`local` reference corpus; `search` planned) |
+| `WEB_SOURCE_MODE` | How candidate sources are found: `local`, `search`, or `both` |
 | `WEB_MAX_PAGES` | Maximum source matches kept per essay |
 | `WEB_CHUNK_SENTENCES` | Number of sentences per checked chunk |
 | `REFERENCE_DIR` | Folder holding the plain-text reference sources |
+| `WEB_SEARCH_PROVIDER` / `WEB_SEARCH_API_KEY` | Search provider (`serper`) and its API key |
+| `WEB_SEARCH_MAX_QUERIES` / `WEB_SEARCH_RESULTS_PER_QUERY` | Per-essay query and result limits |
+| `WEB_SEARCH_TIMEOUT` | Search request timeout in seconds |
+| `WEB_SEARCH_PHRASE_WORDS` / `WEB_SEARCH_MIN_SENTENCE_WORDS` | Exact-query phrase limit and minimum eligible sentence length |
+| `WEB_SEARCH_CACHE_DIR` | Directory used to cache search responses |
 
 ## Limitations
 
@@ -251,7 +262,7 @@ Current settings in `config.php`:
 - The self-trained AI-text detector depends on the size and variety of our dataset. It will not match large commercial detectors.
 - No detector can prove that a text was written by AI. The AI-likelihood score can produce false positives and false negatives, so it is only evidence for the user to weigh.
 - A detector trained on a few AI tools may miss text from other tools or from text that was edited by a student after generation.
-- Internet source checking currently only finds what is in `reference_sources/`; it does not search the live web (search mode is planned).
+- Search mode sends selected essay sentences to Serper; use `WEB_SOURCE_MODE = 'local'` when essays must not be sent to a third party.
 - The AI-likelihood score stays blank until the self-trained AI-text detector is trained. The optional self-trained semantic embedding model is not required.
 - TF-IDF is weak when only a few essays are compared, since word weights depend on the other documents.
 - Similarity scores prioritize pairs for review. A high score is evidence, not proof of plagiarism.
@@ -277,6 +288,4 @@ Current settings in `config.php`:
 2. Report how often the correct source is found and how often unrelated sources are matched.
 
 ## Pending decisions
-
-- Whether a search API is acceptable for finding candidate web pages, or whether the locally collected reference corpus (now implemented) is enough.
 - Whether the thesis title should be revised to mention AI-generated text and internet source detection.

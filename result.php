@@ -182,22 +182,58 @@ require __DIR__ . '/includes/head.php';
 <div class="card">
   <h2>Web source matches</h2>
   <?php if ($webMatches === []) : ?>
-    <p class="muted" style="margin:0">
-      <?= WEB_SOURCE_MODE === 'local'
-          ? 'No matches against the reference corpus at the current threshold.'
-          : 'Internet source checks are disabled (set WEB_SOURCE_MODE in config.php).' ?>
-    </p>
+    <?php
+      $webMessages = [];
+      foreach ($submissions as $submission) {
+          $message = web_check_status_message(isset($submission['web_check_status']) ? (string)$submission['web_check_status'] : null);
+          if ($message === null) {
+              $message = WEB_SOURCE_MODE === 'local'
+                  ? 'No matches against the reference corpus at the current threshold.'
+                  : 'Internet source checks are disabled (set WEB_SOURCE_MODE in config.php).';
+          }
+          $webMessages[$message] = true;
+      }
+    ?>
+    <?php foreach (array_keys($webMessages) as $message) : ?>
+      <p class="muted" style="margin:0"><?= e($message) ?></p>
+    <?php endforeach; ?>
   <?php else : ?>
+    <?php
+      $webFailures = [];
+      foreach ($submissions as $submission) {
+          $message = web_check_status_message(isset($submission['web_check_status']) ? (string)$submission['web_check_status'] : null);
+          if ($message !== null && $submission['web_check_status'] !== 'ok') {
+              $webFailures[$message] = true;
+          }
+      }
+    ?>
+    <?php foreach (array_keys($webFailures) as $message) : ?>
+      <p class="muted"><?= e($message) ?></p>
+    <?php endforeach; ?>
     <table class="list">
       <thead>
         <tr><th>Similarity</th><th>Essay</th><th>Source</th><th>Breakdown</th><th></th></tr>
       </thead>
       <tbody>
       <?php foreach ($webMatches as $w) : ?>
+        <?php
+          $source = (string)$w['source_name'];
+          $isWebSource = preg_match('~^https?://~i', $source) === 1;
+          $sourceMeta = json_decode((string)$w['matched_passages'], true);
+          $sourceTitle = is_string($sourceMeta['title'] ?? null) ? trim($sourceMeta['title']) : '';
+          $sourceDomain = $isWebSource ? (string)(parse_url($source, PHP_URL_HOST) ?: $source) : '';
+        ?>
         <tr class="<?= (float)$w['similarity'] >= FLAG_THRESHOLD ? 'flagged-row' : '' ?>">
           <td><b><?= e(pct((float)$w['similarity'])) ?></b></td>
           <td><?= e($w['essay_name']) ?></td>
-          <td><?= e($w['source_name']) ?></td>
+          <td>
+            <?php if ($isWebSource) : ?>
+              <a href="<?= e($source) ?>" target="_blank" rel="noopener noreferrer"><?= e($sourceTitle !== '' ? $sourceTitle : $source) ?></a>
+              <span class="muted"><?= e($sourceDomain) ?></span>
+            <?php else : ?>
+              <?= e($source) ?>
+            <?php endif; ?>
+          </td>
           <td class="muted">
             N <?= e(pct($w['ngram_score'] !== null ? (float)$w['ngram_score'] : null)) ?>
             &middot; T <?= e(pct($w['tfidf_score'] !== null ? (float)$w['tfidf_score'] : null)) ?>

@@ -7,8 +7,8 @@ require __DIR__ . '/includes/similarity.php';
 $id = (int)($_GET['id'] ?? 0);
 $stmt = db()->prepare(
     'SELECT c.*, a.title AS activity_title,
-            s1.student_name AS name_a, s1.image_path AS image_a, s1.source_type AS type_a, s1.confident_text AS conf_a, s1.language AS lang_a, s1.avg_confidence AS avg_a,
-            s2.student_name AS name_b, s2.image_path AS image_b, s2.source_type AS type_b, s2.confident_text AS conf_b, s2.language AS lang_b, s2.avg_confidence AS avg_b
+            s1.student_name AS name_a, s1.image_path AS image_a, s1.source_type AS type_a, s1.confident_text AS conf_a, s1.language AS lang_a, s1.avg_confidence AS avg_a, s1.web_check_status AS web_status_a,
+            s2.student_name AS name_b, s2.image_path AS image_b, s2.source_type AS type_b, s2.confident_text AS conf_b, s2.language AS lang_b, s2.avg_confidence AS avg_b, s2.web_check_status AS web_status_b
      FROM comparisons c
      JOIN activities a ON a.id = c.activity_id
      JOIN submissions s1 ON s1.id = c.submission_a
@@ -121,15 +121,53 @@ require __DIR__ . '/includes/head.php';
           $matches = $webMatches[$sid] ?? [];
       ?>
         <?php foreach (first_n($matches, 3) as $w) : $rows++; ?>
+          <?php
+            $source = (string)$w['source_name'];
+            $isWebSource = preg_match('~^https?://~i', $source) === 1;
+            $sourceMeta = json_decode((string)$w['matched_passages'], true);
+            $sourceTitle = is_string($sourceMeta['title'] ?? null) ? trim($sourceMeta['title']) : '';
+            $sourceDomain = $isWebSource ? (string)(parse_url($source, PHP_URL_HOST) ?: $source) : '';
+          ?>
           <tr>
             <td><?= e($name) ?></td>
-            <td><?= e($w['source_name']) ?></td>
+            <td>
+              <?php if ($isWebSource) : ?>
+                <a href="<?= e($source) ?>" target="_blank" rel="noopener noreferrer"><?= e($sourceTitle !== '' ? $sourceTitle : $source) ?></a>
+                <span class="muted"><?= e($sourceDomain) ?></span>
+              <?php else : ?>
+                <?= e($source) ?>
+              <?php endif; ?>
+            </td>
             <td><b><?= e(pct((float)$w['similarity'])) ?></b> <span class="muted">N <?= e(pct($w['ngram_score'] !== null ? (float)$w['ngram_score'] : null)) ?> &middot; T <?= e(pct($w['tfidf_score'] !== null ? (float)$w['tfidf_score'] : null)) ?> &middot; L <?= e(pct($w['lev_score'] !== null ? (float)$w['lev_score'] : null)) ?></span></td>
           </tr>
         <?php endforeach; ?>
       <?php endforeach; ?>
+      <?php if ($rows > 0) : ?>
+        <?php foreach (['web_status_a', 'web_status_b'] as $statusKey) :
+            $message = web_check_status_message(isset($c[$statusKey]) ? (string)$c[$statusKey] : null);
+            if ($message === null || $c[$statusKey] === 'ok') {
+                continue;
+            }
+        ?>
+          <tr><td colspan="3" class="muted"><?= e($message) ?></td></tr>
+        <?php endforeach; ?>
+      <?php endif; ?>
       <?php if ($rows === 0) : ?>
-        <tr><td colspan="3" class="muted">No web source matches recorded for this pair (local reference corpus only).</td></tr>
+        <?php
+          $webStatusMessages = [];
+          foreach (['web_status_a', 'web_status_b'] as $statusKey) {
+              $message = web_check_status_message(isset($c[$statusKey]) ? (string)$c[$statusKey] : null);
+              if ($message === null) {
+                  $message = in_array(WEB_SOURCE_MODE, ['search', 'both'], true)
+                      ? 'No web source matches recorded for this pair.'
+                      : 'No web source matches recorded for this pair (local reference corpus only).';
+              }
+              $webStatusMessages[$message] = true;
+          }
+        ?>
+        <?php foreach (array_keys($webStatusMessages) as $message) : ?>
+          <tr><td colspan="3" class="muted"><?= e($message) ?></td></tr>
+        <?php endforeach; ?>
       <?php endif; ?>
     </tbody>
   </table>

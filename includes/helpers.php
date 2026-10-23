@@ -85,6 +85,17 @@ function pct(?float $value): string
     return sprintf('%.0f%%', $value * 100);
 }
 
+/** Returns the user-facing message for a web-source check status. */
+function web_check_status_message(?string $status): ?string
+{
+    return match ($status) {
+        'ok' => 'No matches found online.',
+        'unavailable' => 'Online source check unavailable: no search API key is configured.',
+        'error' => 'Online source check failed (search service error). Try uploading again later.',
+        default => null,
+    };
+}
+
 /** Renders a sentence list as spans, marking highlighted indices. */
 function highlighted_sentences(array $sentences, array $highlighted): string
 {

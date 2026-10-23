@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   low_conf_words INT UNSIGNED NOT NULL DEFAULT 0,
   avg_confidence DECIMAL(5,4) NOT NULL DEFAULT 0,
   ai_score DECIMAL(6,4) NULL,
+  web_check_status VARCHAR(20) NULL,
   status ENUM('pending','flagged','reviewed') NOT NULL DEFAULT 'pending',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_sub_activity FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE

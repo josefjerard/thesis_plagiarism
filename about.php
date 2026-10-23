@@ -26,7 +26,7 @@ require __DIR__ . '/includes/head.php';
     <tr><th>OCR confidence cutoff</th><td>words below <?= e(sprintf('%.0f%%', CONFIDENCE_CUTOFF * 100)) ?> confidence are excluded from comparison</td></tr>
     <tr><th>Semantic service</th><td><?= SEMANTIC_SERVICE_URL !== '' ? e(SEMANTIC_SERVICE_URL) : 'disabled' ?></td></tr>
     <tr><th>AI-likelihood flag</th><td>highlighted at or above <?= e(sprintf('%.0f%%', (defined('AI_FLAG_THRESHOLD') ? AI_FLAG_THRESHOLD : 0.70) * 100)) ?> <span class="muted">(separate from similarity)</span></td></tr>
-    <tr><th>Internet source check</th><td><?= e(defined('WEB_SOURCE_MODE') ? WEB_SOURCE_MODE : 'local') ?> reference corpus</td></tr>
+    <tr><th>Internet source check</th><td><?= e(defined('WEB_SOURCE_MODE') ? WEB_SOURCE_MODE : 'local') ?> mode</td></tr>
   </table>
   <p class="muted" style="margin-bottom:0">
     Only essays in the same language are compared. The internet source check and the
